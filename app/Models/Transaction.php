@@ -15,6 +15,9 @@ class Transaction extends Model
         'user_id', 'transaction_type_id', 'amount', 'status', 'reference'
     ];
 
+    // let us create default transaction
+    public const TYPE_DEPOSIT = 1;
+
     // Transaction Types
     public const TYPES = [
         1 => 'Account Deposit',

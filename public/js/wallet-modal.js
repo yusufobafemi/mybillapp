@@ -1,122 +1,153 @@
 $(document).ready(function () {
     // DOM References
-    const $modalOverlay = $('.wallet-modal-overlay');
-    const $modalCard = $('.wallet-modal');
-    const $amountInput = $('#amount');
-    const $amountError = $('#amountError');
-    const $proceedBtn = $('#proceedBtn');
-    const $closeModalBtn = $('#closeModal');
-    const $cancelBtn = $('#cancelBtn');
-    const $quickAmounts = $('.wallet-quick-amount');
-    const $paymentOptions = $('.wallet-payment-option');
-  
+    const $modalOverlay = $(".wallet-modal-overlay");
+    const $modalCard = $(".wallet-modal");
+    const $amountInput = $("#amount");
+    const $amountError = $("#amountError");
+    const $proceedBtn = $("#proceedBtn");
+    const $closeModalBtn = $("#closeModal");
+    const $cancelBtn = $("#cancelBtn");
+    const $quickAmounts = $(".wallet-quick-amount");
+    const $paymentOptions = $(".wallet-payment-option");
+
     // Ensure critical elements exist
     if (!$modalOverlay.length || !$modalCard.length || !$amountInput.length) {
-      console.error('Required DOM elements are missing.');
-      return;
+        console.error("Required DOM elements are missing.");
+        return;
     }
-  
+
     // Toggle modal visibility
     function toggleModal() {
-      $modalOverlay.toggleClass('hide');
+        $modalOverlay.toggleClass("hide");
     }
-  
+
     // Validate amount input
     function validateAmount() {
-      const amount = parseFloat($amountInput.val());
-      const isValid = !isNaN(amount) && amount >= 1000;
-      $amountInput.toggleClass('error', !isValid);
-      $amountError.toggleClass('visible', !isValid);
-      $proceedBtn.prop('disabled', !isValid);
-      return isValid;
+        const amount = parseFloat($amountInput.val());
+        const isValid = !isNaN(amount) && amount >= 1000;
+        $amountInput.toggleClass("error", !isValid);
+        $amountError.toggleClass("visible", !isValid);
+        $proceedBtn.prop("disabled", !isValid);
+        return isValid;
     }
-  
+
     // Deselect all quick amount buttons
     function deselectQuickAmounts() {
-      $quickAmounts.removeClass('selected');
+        $quickAmounts.removeClass("selected");
     }
-  
+
     // Event Handlers
     // Open modal
-    $('#addmoney').on('click', function (e) {
-      e.preventDefault();
-      toggleModal();
-    });
-  
-    // Close modal
-    $closeModalBtn.add($cancelBtn).on('click', toggleModal);
-  
-    // Close modal when clicking outside
-    $modalOverlay.on('click', function (e) {
-      if (e.target === $modalOverlay[0]) {
+    $("#addmoney").on("click", function (e) {
+        e.preventDefault();
         toggleModal();
-      }
     });
-  
+
+    // Close modal
+    $closeModalBtn.add($cancelBtn).on("click", toggleModal);
+
+    // Close modal when clicking outside
+    $modalOverlay.on("click", function (e) {
+        if (e.target === $modalOverlay[0]) {
+            toggleModal();
+        }
+    });
+
     // Prevent closing when clicking inside modal
-    $modalCard.on('click', function (e) {
-      e.stopPropagation();
+    $modalCard.on("click", function (e) {
+        e.stopPropagation();
     });
-  
+
     // Amount input handling
-    $amountInput.on('input blur', function () {
-      validateAmount();
-      deselectQuickAmounts();
+    $amountInput.on("input blur", function () {
+        validateAmount();
+        deselectQuickAmounts();
     });
-  
+
     // Quick amount buttons
-    $quickAmounts.on('click', function () {
-      $amountInput.val($(this).data('amount'));
-      deselectQuickAmounts();
-      $(this).addClass('selected');
-      validateAmount();
+    $quickAmounts.on("click", function () {
+        $amountInput.val($(this).data("amount"));
+        deselectQuickAmounts();
+        $(this).addClass("selected");
+        validateAmount();
     });
-  
+
     // Proceed button
-    $proceedBtn.on('click', function () {
+    $proceedBtn.on("click", function () {
         if (validateAmount()) {
             const amount = parseFloat($amountInput.val());
-            const selectedPayment = $('.wallet-payment-option.selected span').text();
-    
+            const selectedPayment = $(
+                ".wallet-payment-option.selected span"
+            ).text();
+
             if (!selectedPayment) {
-                $.elegantToastr.error('Error!', 'Please select a payment option.');
+                $.elegantToastr.error(
+                    "Error!",
+                    "Please select a payment option."
+                );
                 return;
             }
-    
-            $proceedBtn.prop('disabled', true);
+
+            $proceedBtn.prop("disabled", true);
             const originalButtonText = $proceedBtn.html();
-            $proceedBtn.html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+            $proceedBtn.html(
+                '<i class="fas fa-spinner fa-spin"></i> Processing...'
+            );
             const randomDigits = Math.random().toString().substring(2, 8); // Gets 6 digits after the decimal
             // Initialize payment via Flutterwave Inline
             FlutterwaveCheckout({
                 public_key: "FLWPUBK_TEST-4680b6c537a7d0003ac847159f903391-X",
-                tx_ref: "TXN_" + Date.now() +  randomDigits,
+                tx_ref: "TXN_" + Date.now() + randomDigits,
                 amount: amount,
                 currency: "NGN",
-                payment_options: "card,banktransfer,ussd", 
+                payment_options: "card,banktransfer,ussd",
                 customer: window.flutterwaveCustomer,
                 customizations: window.flutterwaveCustomization,
-                redirect_url: window.location.origin + '/dashboard',
+                redirect_url: window.location.origin + "/payment/callback",
                 callback: function (response) {
-                    // console.log(response);
-                    if (response.status === 'successful') {
-                        $.elegantToastr.success('Success!', 'Please select a payment option.');
-                        // You can call your server to verify transaction and update user balance
+                    if (response.status === "successful") {
+                        $.ajax({
+                            type: "POST",
+                            url: "/verify-payment",
+                            data: {
+                                transaction_id: response.transaction_id,
+                                _token: $('meta[name="csrf-token"]').attr(
+                                    "content"
+                                ), // IMPORTANT!
+                            },
+                            success: function (res) {
+                                $.elegantToastr.success(
+                                    "Success!",
+                                    "Wallet funded successfully."
+                                );
+                                location.reload(); // Reload to reflect new balance
+                            },
+                            error: function () {
+                                $.elegantToastr.error(
+                                    "Error!",
+                                    "Could not verify transaction."
+                                );
+                                $proceedBtn
+                                    .prop("disabled", false)
+                                    .html(originalButtonText);
+                            },
+                        });
                     } else {
-                        $.elegantToastr.error('Error!', 'Payment Failed or Cancelled.');
+                        $.elegantToastr.error(
+                            "Error!",
+                            "Payment Failed or Cancelled."
+                        );
+                        $proceedBtn
+                            .prop("disabled", false)
+                            .html(originalButtonText);
                     }
-                    // Restore button
-                    $proceedBtn.prop('disabled', false);
-                    $proceedBtn.html(originalButtonText);
                 },
                 onclose: function () {
-                    console.log('Modal closed');
-                    $proceedBtn.prop('disabled', false);
+                    console.log("Modal closed");
+                    $proceedBtn.prop("disabled", false);
                     $proceedBtn.html(originalButtonText);
                 },
             });
         }
     });
-    
-    
-  });
+});

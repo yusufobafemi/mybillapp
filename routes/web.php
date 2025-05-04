@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
+use App\Http\Controllers\PaymentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,13 +29,17 @@ Route::get('/', function () {
 
 // Route for email verification
 Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])
-     ->middleware(['auth', 'signed'])
-     ->name('verification.verify');
+    ->middleware(['auth', 'signed'])
+    ->name('verification.verify');
+
+//  this is for verification of payment
+Route::post('/verify-payment', [PaymentController::class, 'verifyPayment'])->middleware('auth');
+
 
 // Route for resending verification email
 Route::post('/email/verification-notification', [VerificationController::class, 'resend'])
-     ->middleware(['auth', 'throttle:6,1'])
-     ->name('verification.resend');
+    ->middleware(['auth', 'throttle:6,1'])
+    ->name('verification.resend');
 
 // Route to show verification notice
 Route::get('/email/verify', function () {
@@ -57,13 +62,17 @@ Auth::routes();
 
 Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->middleware('auth')->name('dashboard');
 
-Route::get('/login', function () {return view('auth.login'); })->name('login');
+Route::get('/login', function () {
+    return view('auth.login');
+})->name('login');
 
 Route::post('/login', [LoginController::class, 'login'])->name('login');
 
 Route::post('/register', [RegisterController::class, 'register'])->name('register');
 
-Route::get('/test', function () {return view('test'); })->name('test');
+Route::get('/test', function () {
+    return view('test');
+})->name('test');
 
 Route::post('/user/{id}/update-balance', [UserController::class, 'updateBalance']);
 
