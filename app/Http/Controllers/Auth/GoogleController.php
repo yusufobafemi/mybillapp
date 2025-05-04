@@ -6,34 +6,46 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GoogleController extends Controller
 {
+    /**
+     * Redirect the user to Google's OAuth page.
+     */
     public function redirectToGoogle()
     {
         return Socialite::driver('google')->redirect();
     }
 
+    /**
+     * Handle callback from Google.
+     */
     public function handleGoogleCallback()
     {
         try {
-            $googleUser = Socialite::driver('google')->user();
+            $googleUser = Socialite::driver('google')->stateless()->user(); // stateless for callback to work reliably on shared hosting
 
-            // Find or create user
-            $user = User::firstOrCreate(
+            $user = User::updateOrCreate(
                 ['email' => $googleUser->getEmail()],
                 [
                     'name' => $googleUser->getName(),
-                    'password' => bcrypt(str()->random(16)), // Dummy password
-                    'google_id' => $googleUser->getId(), // If you want to save
+                    'google_id' => $googleUser->getId(),
+                    'password' => bcrypt(Str::random(16)), // Set dummy password only on first creation
                 ]
             );
 
             Auth::login($user);
 
-            return redirect('/dashboard'); // or wherever you want
+            return redirect('/dashboard');
         } catch (\Exception $e) {
-            return redirect('/login')->with('error', 'Something went wrong: ' . $e->getMessage());
+            Log::error('Google Login Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect('/login')->with('error', 'Google login failed. Please try again.');
         }
     }
 }
