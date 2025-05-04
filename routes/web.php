@@ -35,7 +35,6 @@ Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'
 //  this is for verification of payment
 Route::post('/verify-payment', [PaymentController::class, 'verifyPayment'])->middleware('auth');
 
-
 // Route for resending verification email
 Route::post('/email/verification-notification', [VerificationController::class, 'resend'])
     ->middleware(['auth', 'throttle:6,1'])
@@ -58,7 +57,7 @@ Route::get('/logout', function () {
 
 // Route::middleware('cors')->get('/your-api-endpoint', 'YourController@yourMethod');
 
-Auth::routes();
+// Auth::routes();
 
 Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->middleware('auth')->name('dashboard');
 

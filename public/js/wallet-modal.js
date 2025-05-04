@@ -105,44 +105,28 @@ $(document).ready(function () {
                 customizations: window.flutterwaveCustomization,
                 redirect_url: window.location.origin + "/verify-payment",
                 callback: function (response) {
-                    if (response.status === "successful") {
-                        $.ajax({
-                            type: "POST",
-                            url: "/verify-payment",
-                            data: {
-                                transaction_id: response.transaction_id,
-                                _token: $('meta[name="csrf-token"]').attr(
-                                    "content"
-                                ), // IMPORTANT!
-                            },
-                            success: function (res) {
-                                $.elegantToastr.success(
-                                    "Success!",
-                                    "Wallet funded successfully."
-                                );
-                                location.reload(); // Reload to reflect new balance
-                            },
-                            error: function () {
-                                $.elegantToastr.error(
-                                    "Error!",
-                                    "Could not verify transaction."
-                                );
-                                $proceedBtn
-                                    .prop("disabled", false)
-                                    .html(originalButtonText);
-                            },
-                        });
-                    } else {
-                        $.elegantToastr.error(
-                            "Error!",
-                            "Payment Failed or Cancelled."
-                        );
-                        $proceedBtn
-                            .prop("disabled", false)
-                            .html(originalButtonText);
-                    }
-                },
-                onclose: function () {
+                  if (response.status === 'successful' && response.transaction_id) {
+                      $.ajax({
+                          type: "POST",
+                          url: "/verify-payment",
+                          data: {
+                              transaction_id: response.transaction_id,
+                              _token: $('meta[name="csrf-token"]').attr("content")
+                          },
+                          success: function (res) {
+                              $.elegantToastr.success("Success!", "Wallet funded successfully.");
+                              location.reload();
+                          },
+                          error: function () {
+                              $.elegantToastr.error("Error!", "Could not verify transaction.");
+                              $proceedBtn.prop("disabled", false).html(originalButtonText);
+                          }
+                      });
+                  } else {
+                      $.elegantToastr.error("Error!", "Payment failed or no transaction ID.");
+                      $proceedBtn.prop("disabled", false).html(originalButtonText);
+                  }
+              },onclose: function () {
                     console.log("Modal closed");
                     $proceedBtn.prop("disabled", false);
                     $proceedBtn.html(originalButtonText);
