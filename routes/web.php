@@ -8,7 +8,8 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\UserController;
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -65,3 +66,13 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 Route::get('/test', function () {return view('test'); })->name('test');
 
 Route::post('/user/{id}/update-balance', [UserController::class, 'updateBalance']);
+
+Route::post('/webhook', function (Request $request) {
+    Log::info('Webhook received', $request->all());
+
+    // Run git pull - make sure this works on your server
+    $output = shell_exec('cd /home/YOUR_CPNANEL_USERNAME/public_html && git pull 2>&1');
+    Log::info('Git Pull Output: ' . $output);
+
+    return response()->json(['status' => 'Webhook received', 'output' => $output]);
+});
