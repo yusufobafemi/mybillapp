@@ -15,7 +15,11 @@ class Cors
      */
     public function handle($request, Closure $next)
     {
-        $response = $next($request);
+        if ($request->getMethod() === "OPTIONS") {
+            $response = response()->json('OK', 200);
+        } else {
+            $response = $next($request);
+        }
 
         $response->headers->set('Access-Control-Allow-Origin', '*'); // Or specify your frontend's origin
         $response->headers->set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE');
