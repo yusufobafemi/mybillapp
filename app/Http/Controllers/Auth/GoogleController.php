@@ -37,7 +37,7 @@ class GoogleController extends Controller
             );
 
             Auth::login($user);
-
+            dd(Auth::check());
             return redirect('/dashboard');
         } catch (\Exception $e) {
             Log::error('Google Login Error', [
