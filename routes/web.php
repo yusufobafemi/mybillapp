@@ -33,7 +33,7 @@ Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'
     ->name('verification.verify');
 
 //  this is for verification of payment
-Route::post('/verify-payment', [PaymentController::class, 'verifyPayment'])->middleware('auth');
+Route::get('/verify-payment', [PaymentController::class, 'verifyPayment'])->middleware('auth');
 
 // Route for resending verification email
 Route::post('/email/verification-notification', [VerificationController::class, 'resend'])
