@@ -54,7 +54,8 @@ Route::get('/logout', function () {
 
 Auth::routes();
 
-Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('dashboard');
+Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->middleware('auth')->name('dashboard');
+
 Route::get('/login', function () {return view('auth.login'); })->name('login');
 
 Route::post('/login', [LoginController::class, 'login'])->name('login');
