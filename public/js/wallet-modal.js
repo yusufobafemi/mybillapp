@@ -87,17 +87,6 @@ $(document).ready(function () {
             const originalButtonText = $proceedBtn.html();
             $proceedBtn.html('<i class="fas fa-spinner fa-spin"></i> Processing...');
             const randomDigits = Math.random().toString().substring(2, 8); // Gets 6 digits after the decimal
-            console.log("Flutterwave Checkout Configuration:", {
-              public_key: "FLWPUBK_TEST-...",
-              tx_ref: "TXN_...",
-              amount: amount,
-              currency: "NGN",
-              payment_options: "card,banktransfer,ussd",
-              customer: window.flutterwaveCustomer,
-              customizations: window.flutterwaveCustomization,
-              redirect_url: '...',
-              // ... other parameters
-          });
             // Initialize payment via Flutterwave Inline
             FlutterwaveCheckout({
                 public_key: "FLWPUBK_TEST-4680b6c537a7d0003ac847159f903391-X",
@@ -107,7 +96,7 @@ $(document).ready(function () {
                 payment_options: "card,banktransfer,ussd", 
                 customer: window.flutterwaveCustomer,
                 customizations: window.flutterwaveCustomization,
-                redirect_url: 'http://127.0.0.1:8000/dashboard',
+                redirect_url: window.location.origin + '/dashboard',
                 callback: function (response) {
                     // console.log(response);
                     if (response.status === 'successful') {

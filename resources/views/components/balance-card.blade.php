@@ -13,8 +13,5 @@
         <button class="btn primary-btn" id="addmoney">
             <i class="fas fa-plus"></i> {{ $addButtonText }}
         </button>
-        <button class="btn outline-btn">
-            <i class="fas fa-arrow-right"></i> {{ $transferButtonText }}
-        </button>
     </div>
 </div>

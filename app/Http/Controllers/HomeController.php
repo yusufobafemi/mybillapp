@@ -23,6 +23,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        return view('home');
+        // this home is th ename of the page which is the dasheboard
+        return view('dashboard');
     }
 }

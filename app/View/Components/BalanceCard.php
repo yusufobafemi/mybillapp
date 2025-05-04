@@ -12,7 +12,6 @@ class BalanceCard extends Component
     public $changeText;
     public $changeType;
     public $addButtonText;
-    public $transferButtonText;
 
     public function __construct(
         $title,
@@ -20,8 +19,7 @@ class BalanceCard extends Component
         $amount,
         $changeText,
         $changeType,
-        $addButtonText,
-        $transferButtonText
+        $addButtonText
     ) {
         $this->title = $title;
         $this->icon = $icon;
@@ -29,7 +27,6 @@ class BalanceCard extends Component
         $this->changeText = $changeText;
         $this->changeType = $changeType;
         $this->addButtonText = $addButtonText;
-        $this->transferButtonText = $transferButtonText;
     }
 
     public function render()
