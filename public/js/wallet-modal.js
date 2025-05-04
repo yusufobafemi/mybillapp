@@ -103,7 +103,7 @@ $(document).ready(function () {
                 payment_options: "card,banktransfer,ussd",
                 customer: window.flutterwaveCustomer,
                 customizations: window.flutterwaveCustomization,
-                redirect_url: window.location.origin + "verify-payment",
+                redirect_url: window.location.origin + "/verify-payment",
                 callback: function (response) {
                     if (response.status === "successful") {
                         $.ajax({
