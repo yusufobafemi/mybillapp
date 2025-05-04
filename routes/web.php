@@ -68,11 +68,25 @@ Route::get('/test', function () {return view('test'); })->name('test');
 Route::post('/user/{id}/update-balance', [UserController::class, 'updateBalance']);
 
 Route::post('/webhook', function (Request $request) {
-    Log::info('Webhook received', $request->all());
+    // 1. Validate GitHub signature
+    $githubSecret = env('GITHUB_SECRET');
 
-    // Run git pull - make sure this works on your server
-    $output = shell_exec('cd /home/YOUR_CPNANEL_USERNAME/public_html && git pull 2>&1');
-    Log::info('Git Pull Output: ' . $output);
+    $signature = 'sha256=' . hash_hmac('sha256', $request->getContent(), $githubSecret);
+    $githubHeader = $request->header('X-Hub-Signature-256');
 
-    return response()->json(['status' => 'Webhook received', 'output' => $output]);
+    if (!hash_equals($signature, $githubHeader)) {
+        Log::warning('Invalid GitHub webhook signature.', [
+            'expected' => $signature,
+            'received' => $githubHeader,
+        ]);
+        abort(403, 'Unauthorized');
+    }
+
+    // 2. Log and run deploy script
+    Log::info('Valid GitHub webhook received.');
+
+    $output = shell_exec('/bin/bash /home/mybifqgl/main.mybillapp.com/deploy.sh 2>&1');
+    Log::info("Deploy Output: " . $output);
+
+    return response()->json(['status' => 'Deployment triggered', 'output' => $output]);
 });
