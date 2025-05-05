@@ -50,6 +50,9 @@ class PaymentController extends Controller
     {
         // Log the incoming request details for debugging
         Log::info('Verify Payment Callback Received:', $request->all());
+        // get the token to test
+        Log::debug('Using FLW secret token:', ['token' => env('FLW_SECRET_KEY')]);
+
     
         $transactionID = $request->input('transaction_id');
     
