@@ -33,6 +33,8 @@
                 />
             @endauth
 
+            {{-- test service modal --}}
+            <x-service-modal />
 
             <!-- Quick Actions -->
             <x-quick-actions />

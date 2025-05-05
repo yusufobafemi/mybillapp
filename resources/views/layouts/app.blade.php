@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{{ asset('css/toast.css') }}">
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
     @yield('styles')
+    @stack('styles')
 </head>
 <body>
     @include('partials.navbar')
@@ -40,5 +41,6 @@
     <script src="{{ asset('js/script.js') }}"></script>
     <script src="{{ asset('js/toast.js') }}"></script>
     @yield('scripts')
+    @stack('scripts')
 </body>
 </html>
