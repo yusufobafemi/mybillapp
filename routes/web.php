@@ -32,8 +32,15 @@ Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'
     ->middleware(['auth', 'signed'])
     ->name('verification.verify');
 
-//  this is for verification of payment
-Route::match(['get', 'post'], '/verify-payment', [PaymentController::class, 'verifyPayment'])->middleware('auth')->name('verify.payment');
+Route::middleware(['auth'])->group(function () {
+    // Route for the frontend AJAX call to prepare the top-up
+    // This creates the pending record and returns tx_ref etc.
+    Route::post('/prepare-topup', [PaymentController::class, 'prepareTopUp'])->name('payment.prepare'); // Added middleware here too
+
+    // Route that Flutterwave redirects to after payment attempt
+    // Changed to GET method as browser redirects are GET
+    Route::get('/verify-payment', [PaymentController::class, 'verifyPayment'])->name('verify.payment'); // Added middleware here too
+});
 
 // Route for resending verification email
 Route::post('/email/verification-notification', [VerificationController::class, 'resend'])

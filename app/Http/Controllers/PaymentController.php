@@ -7,181 +7,319 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
-use App\Models\Transaction;
+use App\Models\Transaction; // Import the Transaction model
 use App\Models\TopUp;
+use App\Models\TransactionType; // Import the TransactionType model
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
-    /**
-     * Start the Flutterwave payment process.
-     */
-    public function initiatePayment(Request $request)
+    // Define the expected name in the transaction_types table for deposits
+    const TRANSACTION_TYPE_DEPOSIT_DB_NAME = 'Account Deposit'; // <-- Use the exact name from your TYPES array or transaction_types table
+
+    private $depositTransactionTypeId = null; // To store the fetched ID
+
+    public function __construct()
     {
-        $user = $request->user();
+        // Fetch the deposit transaction type ID from the database once
+        try {
+            $this->depositTransactionTypeId = TransactionType::where('name', self::TRANSACTION_TYPE_DEPOSIT_DB_NAME)->value('id');
 
-        $response = Http::withToken(env('FLW_SECRET_KEY'))->post('https://api.flutterwave.com/v3/payments', [
-            'tx_ref' => $request['data']['tx_ref'],
-            'amount' => $request->amount,
-            'currency' => 'NGN',
-            'redirect_url' => route('payment.callback'), // use named route
-            'customer' => [
-                'email' => $user->email,
-                'phonenumber' => $user->phone,
-                'name' => $user->name,
-            ],
-            'customizations' => [
-                'title' => 'Top up Balance',
-                'description' => 'Add money to your account',
-                'logo' => asset('logo.png'), // change to your logo
-            ],
-        ]);
-
-        if ($response->successful() && isset($response['data']['link'])) {
-            return redirect($response['data']['link']);
+            if (is_null($this->depositTransactionTypeId)) {
+                 // Log a critical error if the transaction type doesn't exist in the DB
+                Log::critical('Transaction type "' . self::TRANSACTION_TYPE_DEPOSIT_DB_NAME . '" not found in the transaction_types table.');
+                // Depending on how critical, you might disable functionality or throw an exception
+                // For now, we'll just log and check for null later when creating the transaction record.
+            }
+        } catch (\Exception $e) {
+            // Catch database connection errors or other exceptions during fetch
+            Log::critical('Failed to fetch transaction type ID from database: ' . $e->getMessage());
+             // The ID will remain null, handled below
         }
-
-        return back()->with('error', 'Unable to initiate payment.');
     }
 
+
+    /**
+     * Prepare a top-up transaction by creating a pending record.
+     * Called via AJAX from the frontend.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function prepareTopUp(Request $request)
+    {
+        $user = Auth::user(); // Get the authenticated user
+
+        // Validate the incoming amount
+        $request->validate([
+            'amount' => 'required|numeric|min:1000', // Adjust min amount as needed
+        ]);
+
+        $amount = $request->input('amount');
+
+        // Generate a unique transaction reference on the server
+        $txRef = 'TXN_' . $user->id . '_' . time() . '_' . Str::random(8);
+        // Consider adding a check to ensure this txRef is unique in the database
+        // before using it, especially if using random strings.
+
+        DB::beginTransaction();
+        try {
+            // Create a pending TopUp record in the database
+            $topUp = TopUp::create([
+                'user_id' => $user->id,
+                'amount' => $amount, // Store the requested amount
+                'gateway' => 'Flutterwave', // Or leave null until verification
+                'transaction_reference' => $txRef,
+                'status' => 'Pending', // Set status to Pending
+                // Add other relevant fields initialized to null/default
+            ]);
+
+            DB::commit();
+            Log::info('Pending TopUp record created:', ['topUpId' => $topUp->id, 'txRef' => $txRef, 'amount' => $amount, 'userId' => $user->id]);
+
+            // Return the generated txRef and user details to the frontend
+            return response()->json([
+                'message' => 'Top-up prepared',
+                'tx_ref' => $txRef,
+                'customer' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phonenumber' => $user->phone, // Make sure phone is available/handled if null
+                ],
+                'amount' => $amount, // Return the amount too for clarity in JS
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Failed to create pending TopUp record:', ['exception' => $e->getMessage(), 'userId' => $user->id, 'amount' => $amount]);
+            return response()->json(['error' => 'Could not prepare transaction. Please try again.'], 500);
+        }
+         // Add ValidationException handling if you want specific JSON response for validation errors
+         // catch (ValidationException $e) {
+         //     return response()->json(['error' => $e->errors()], 422);
+         // }
+    }
+
+    /**
+     * Handles the callback from Flutterwave after a payment.
+     * This is where you verify the transaction.
+     * Called via GET redirect from Flutterwave.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
     public function verifyPayment(Request $request)
     {
         // Log the incoming request details for debugging
         Log::info('Verify Payment Callback Received:', $request->all());
-        // get the token to test
-        Log::debug('Using FLW secret token:', ['token' => env('FLW_SECRET_KEY')]);
 
-    
-        $transactionID = $request->input('transaction_id');
-    
+        // Get the transaction ID from the request parameters
+        // Flutterwave typically sends transaction_id and tx_ref in the GET query string
+        $transactionID = $request->query('transaction_id');
+        $txRefFromFlutterwave = $request->query('tx_ref'); // Get tx_ref from the redirect too
+
+        // --- Check if required parameters are missing ---
         if (empty($transactionID)) {
-            // Handle case where transaction_id is missing (e.g., bad redirect)
-            Log::error('Verify Payment: transaction_id is missing from request.');
-            return response()->json(['error' => 'Missing transaction ID.'], 400); // Bad Request
+            Log::error('Verify Payment: transaction_id is missing from GET request.');
+            // Redirect to dashboard with error, as this was a browser redirect
+            return redirect('/dashboard')->with('error', 'Payment verification failed: Missing transaction ID.');
         }
-    
-        // Make the server-to-server verification call
+         if (empty($txRefFromFlutterwave)) {
+            Log::error('Verify Payment: tx_ref is missing from GET request.');
+            // Redirect to dashboard with error
+            return redirect('/dashboard')->with('error', 'Payment verification failed: Missing transaction reference.');
+        }
+
+
+        // --- Find the pending TopUp record using the tx_ref from Flutterwave ---
+        $pendingTopUp = TopUp::where('transaction_reference', $txRefFromFlutterwave)->first();
+
+        // If the pending record isn't found, it's a major issue or potentially fraud
+        if (!$pendingTopUp) {
+            Log::error('Verify Payment: Pending TopUp record not found for tx_ref from Flutterwave.', ['tx_ref' => $txRefFromFlutterwave, 'transaction_id' => $transactionID]);
+             // Redirect to dashboard with error
+             return redirect('/dashboard')->with('error', 'Payment verification failed: Transaction record not found.');
+        }
+
+        // Check if this transaction has already been processed (against the pending record)
+        if ($pendingTopUp->status === 'Successful') {
+             Log::warning('Verify Payment: Attempted double credit for pending record.', ['topUpId' => $pendingTopUp->id, 'tx_ref' => $txRefFromFlutterwave, 'transaction_id' => $transactionID]);
+             // Redirect to dashboard with success message as it was already successful
+             return redirect('/dashboard')->with('success', 'This payment was already processed successfully.');
+        }
+
+
+        // --- Verification Step ---
+        // Make a server-to-server call to Flutterwave to verify the transaction status
         try {
             $response = Http::withToken(env('FLW_SECRET_KEY'))
-                ->get("https://api.flutterwave.com/v3/transactions/{$transactionID}/verify");
-    
+                            ->get("https://api.flutterwave.com/v3/transactions/{$transactionID}/verify");
+
         } catch (\Exception $e) {
-            // Handle network errors or other exceptions during the API call
-            Log::error('Exception during Flutterwave verification API call:', ['exception' => $e->getMessage(), 'transaction_id' => $transactionID]);
-            return response()->json(['error' => 'Error communicating with payment gateway.'], 500); // Internal Server Error
+            // Handle network errors or other exceptions during the API call itself
+             Log::error('Exception during Flutterwave verification API call:', ['exception' => $e->getMessage(), 'transaction_id' => $transactionID, 'tx_ref' => $txRefFromFlutterwave]);
+             // Update pending record status if possible before redirecting
+             $pendingTopUp->status = 'Failed';
+             $pendingTopUp->save(); // Save the failed status
+             return redirect('/dashboard')->with('error', 'Payment verification failed: Error communicating with gateway.');
         }
-    
-    
+
+
         // Check if the API call itself was successful (HTTP status 2xx)
         if (!$response->successful()) { // Use successful() which checks for 2xx range
-             Log::error('Flutterwave Verification API Error Response:', ['status' => $response->status(), 'body' => $response->body()]);
-            return response()->json(['error' => 'Verification failed with payment gateway.'], 422);
+             Log::error('Flutterwave Verification API Error Response:', ['status' => $response->status(), 'body' => $response->body(), 'transaction_id' => $transactionID, 'tx_ref' => $txRefFromFlutterwave]);
+             // Update pending record status
+             $pendingTopUp->status = 'Failed';
+             $pendingTopUp->save();
+             return redirect('/dashboard')->with('error', 'Payment verification failed: Could not verify with gateway.');
         }
-    
+
         // Get the JSON body of the response
         $responseData = $response->json(); // <-- Correctly parse JSON body
-    
-        // Log the Flutterwave API response for debugging
-        Log::info('Flutterwave Verification API Response:', $responseData);
-    
-    
-        // *** IMPORTANT CHECK: Verify the top-level API response status ***
-        // The API call itself must be a success before we check the transaction status
-        if (!is_array($responseData) || !isset($responseData['status']) || $responseData['status'] !== 'success' || !isset($responseData['data'])) {
-            // This means the API call was successful (200 OK) but the body wasn't
-            // the expected 'success' status with a 'data' payload.
-            Log::warning('Flutterwave Verification API Call Status Not "success" or missing data:', $responseData);
-            // You might want to return a specific error or just the general one
-             return response()->json(['error' => 'Invalid or unexpected response format from gateway.'], 422);
-        }
-    
-    
-        // Now access the 'data' key from the *parsed* response body
-        $data = $responseData['data']; // <-- This should now work if $responseData is an array/object and has 'data'
 
-        // --- If all checks pass, proceed to update the user's balance ---
-        $user = Auth::user();
-        $amount = $data['amount']; // Use the verified amount from Flutterwave
-        $tx_ref = $data['tx_ref'];
-    
-        // *** IMPORTANT CHECK: Verify the transaction status from the 'data' payload ***
+        // Log the Flutterwave API response for debugging
+        Log::info('Flutterwave Verification API Response (Parsed):', $responseData);
+
+
+        // *** IMPORTANT CHECK: Verify the top-level API response status and data payload ***
+        if (!is_array($responseData) || !isset($responseData['status']) || $responseData['status'] !== 'success' || !isset($responseData['data'])) {
+            // This means the API call was successful (200 OK) but the body wasn't the expected 'success' status with a 'data' payload.
+            Log::warning('Flutterwave Verification API Call Status Not "success" or missing data (after 200 OK):', ['responseData' => $responseData, 'transaction_id' => $transactionID, 'tx_ref' => $txRefFromFlutterwave]);
+             // Update pending record status
+             $pendingTopUp->status = 'Failed'; // Or a more specific 'Invalid Gateway Response'
+             $pendingTopUp->save();
+             return redirect('/dashboard')->with('error', 'Payment verification failed: Invalid response format.');
+        }
+
+        // Now access the 'data' key from the *parsed* response body
+        $data = $responseData['data'];
+
+
+        // --- Important Checks from Flutterwave's Verified Data ---
+
+        // 1. Verify the transaction status from the 'data' payload
         if (!isset($data['status']) || $data['status'] !== 'successful') {
             // The API call succeeded, but the transaction status itself is not 'successful'
-            Log::warning('Flutterwave Transaction Status Not "successful":', ['tx_ref' => $data['tx_ref'] ?? 'N/A', 'status' => $data['status'] ?? 'N/A']);
-            // You might want to handle 'cancelled' or 'failed' statuses specifically
-            return response()->json(['error' => 'Payment was not successfully completed.'], 422);
+            Log::warning('Flutterwave Transaction Status Not "successful":', ['tx_ref' => $data['tx_ref'] ?? $txRefFromFlutterwave, 'status' => $data['status'] ?? 'N/A', 'transaction_id' => $transactionID]);
+             // Update pending record status based on Flutterwave's status
+             $pendingTopUp->status = $data['status'] ?? 'Failed'; // Use the actual status if available
+             $pendingTopUp->save();
+             return redirect('/dashboard')->with('error', 'Payment was not successfully completed (' . ($data['status'] ?? 'Unknown Status') . ').');
         }
-    
-        // *** IMPORTANT CHECK: Verify amount and currency to prevent fraud ***
-        // You should ideally compare the verified amount ($data['amount'])
-        // against the amount you expected for this transaction reference ($data['tx_ref']).
-        // For this, you'd need to have stored the expected amount beforehand
-        // (e.g., in a pending top_up record created when the user initiated the process).
-        // Example (requires fetching a pending top_up record):
-        $pendingTopUp = \App\Models\TopUp::where('transaction_reference', $data['tx_ref'])->first();
-        if (!$pendingTopUp || $data['amount'] < $pendingTopUp->amount || $data['currency'] !== 'NGN') {
-            Log::warning('Flutterwave Verification: Amount/Currency Mismatch or Pending TopUp Not Found:', ['tx_ref' => $data['tx_ref'], 'verified_amount' => $data['amount'], 'expected_amount' => $pendingTopUp->amount ?? 'N/A']);
-            // This could be a fraud attempt or a system issue
-            return response()->json(['error' => 'Amount or currency mismatch.'], 422);
+
+        // 2. Verify that the tx_ref matches the one from your pending record
+        if (!isset($data['tx_ref']) || $data['tx_ref'] !== $pendingTopUp->transaction_reference) {
+            Log::error('Flutterwave Verification: tx_ref mismatch between pending record and verification response!', [
+                'pending_tx_ref' => $pendingTopUp->transaction_reference,
+                'verified_tx_ref' => $data['tx_ref'] ?? 'N/A',
+                'transaction_id' => $transactionID,
+            ]);
+             // This is a critical error, potentially fraud or a serious misconfiguration
+             $pendingTopUp->status = 'Failed (tx_ref mismatch)'; // Add specific status if needed
+             $pendingTopUp->save();
+             return redirect('/dashboard')->with('error', 'Payment verification failed: Transaction reference mismatch.');
         }
-    
-    
-        // Prevent duplicate entries (Good check!)
-        // This check relies on tx_ref. Also consider checking if the transaction ID from Flutterwave
-        // has already been processed if you store it.
-        if (\App\Models\Transaction::where('reference', $tx_ref)->exists()) {
-            Log::warning('Flutterwave Verification: Duplicate transaction reference detected:', ['tx_ref' => $tx_ref]);
-            // Although it's a duplicate, if verification was successful, maybe return a success message
-            // as the user's balance should have already been updated by the first processing.
-            return response()->json(['message' => 'Transaction already processed.']); // Consider a 200 status
+
+
+        // 3. Verify amount and currency against your pending record
+        if (!isset($data['amount']) || !isset($data['currency']) || $data['amount'] < $pendingTopUp->amount || $data['currency'] !== 'NGN') {
+            Log::warning('Flutterwave Verification: Amount/Currency Mismatch against pending record:', [
+                'tx_ref' => $data['tx_ref'],
+                'verified_amount' => $data['amount'] ?? 'N/A',
+                'expected_amount' => $pendingTopUp->amount,
+                'verified_currency' => $data['currency'] ?? 'N/A',
+                'expected_currency' => 'NGN',
+                'transaction_id' => $transactionID,
+            ]);
+             // Update pending record status
+             $pendingTopUp->status = 'Failed (Amount/Currency Mismatch)'; // Add specific status if needed
+             $pendingTopUp->save();
+             return redirect('/dashboard')->with('error', 'Payment verification failed: Amount or currency mismatch.');
         }
-    
-        // Use a database transaction for atomicity!
+
+        // --- If all checks pass, proceed to update the user's balance ---
+        // The transaction is confirmed successful by Flutterwave AND matches our pending record
+        // Use the user associated with the pending TopUp record as the recipient
+        $user = User::find($pendingTopUp->user_id);
+
+        // IMPORTANT: Re-check if the pending record status is still Pending
+         if ($pendingTopUp->status !== 'Pending') {
+             Log::warning('Verify Payment: Pending record status was not Pending right before processing!', ['topUpId' => $pendingTopUp->id, 'status' => $pendingTopUp->status, 'tx_ref' => $txRefFromFlutterwave, 'transaction_id' => $transactionID]);
+             // Redirect with success message as it was likely processed concurrently
+             // Or handle as a potential duplicate if it somehow wasn't caught by the first status check
+             return redirect('/dashboard')->with('success', 'This payment was already processed.');
+         }
+
+        // --- Database Transaction for Atomicity ---
         DB::beginTransaction();
         try {
-            $user->increment('balance', $amount); // Increment balance
-    
-            // Update or Create TopUp record
-            // If you pre-created a 'Pending' TopUp record, find and update it here.
-            // Otherwise, create a new one.
-            \App\Models\TopUp::create([
-                'user_id' => $user->id,
-                'amount' => $amount,
-                'gateway' => 'Flutterwave', // Or get from $data['payment_type'] if available/needed
-                'transaction_reference' => $tx_ref,
-                'status' => 'Successful',
-                // Optionally store Flutterwave's internal ID: 'flutterwave_id' => $data['id'],
-                // Add other details from $data as needed
-            ]);
-    
-            // Create a general Transaction record
-            // Make sure TYPE_DEPOSIT is defined somewhere (e.g., in your Transaction model as a const)
-            // Or fetch the ID from the transaction_types table:
-            // $depositTypeId = \App\Models\TransactionType::where('name', 'Deposit')->value('id');
-            \App\Models\Transaction::create([
-                'user_id' => $user->id,
-                'transaction_type_id' => \App\Models\Transaction::TYPE_DEPOSIT, // Replace with actual ID
-                'amount' => $amount, // Use the verified amount
-                'status' => 'successful',
-                'reference' => $tx_ref,
-                // Add other details as needed
-            ]);
-    
-            DB::commit(); // Commit the transaction
-            Log::info('Payment Successfully Verified and Processed:', ['tx_ref' => $tx_ref, 'amount' => $amount, 'userId' => $user->id]);
-    
-            return response()->json(['message' => 'Wallet funded successfully.']); // Success!
-    
+            // Update the pending TopUp record status to Successful
+            $pendingTopUp->status = 'Successful';
+             // Optionally store the Flutterwave Transaction ID in your TopUp record
+             // Make sure you have a 'flutterwave_transaction_id' column (bigint UNSIGNED)
+             // $pendingTopUp->flutterwave_transaction_id = $transactionID;
+             // Optionally store the verified amount in the record if you didn't trust the initial request amount
+             // $pendingTopUp->amount = $data['amount']; // Update amount if needed, otherwise keep the requested amount
+            $pendingTopUp->save();
+
+
+            // Increment user's balance using the *verified* amount from Flutterwave
+            if ($user) { // Ensure user object is valid
+                 $user->increment('balance', $data['amount']); // Use $data['amount'] for the actual credited amount
+                 // User balance is automatically saved by increment()
+             } else {
+                 // This case should ideally not happen if the user_id in pendingTopUp is correct
+                 Log::error('Verify Payment: User not found for balance update based on pending record user_id!', ['userId_from_pending' => $pendingTopUp->user_id, 'topUpId' => $pendingTopUp->id, 'tx_ref' => $txRefFromFlutterwave, 'transaction_id' => $transactionID]);
+                 // Rollback the transaction because we can't credit the user
+                 throw new \Exception("User not found for balance update.");
+             }
+
+
+            // Create a general Transaction record for tracking all money movements
+             // Check if the deposit transaction type ID was successfully fetched in the constructor
+             if (is_null($this->depositTransactionTypeId)) {
+                 Log::critical('Deposit Transaction Type ID is not set. Skipping creation of general transaction record for TopUp: ' . $pendingTopUp->id);
+                 // The main TopUp record is created and balance is incremented, just the general transaction record is missing.
+                 // Decide if this is acceptable or if the entire transaction should roll back.
+                 // For now, it will just skip creating this record.
+             } else {
+                 Transaction::create([
+                     'user_id' => $user->id, // Use the user ID you are crediting
+                     'transaction_type_id' => $this->depositTransactionTypeId, // Use the fetched ID
+                     'amount' => $data['amount'], // Use the verified amount
+                     'status' => 'successful', // Status for your internal transaction record
+                     'reference' => $data['tx_ref'], // Use the verified tx_ref
+                     // Add other relevant fields from $data if needed
+                 ]);
+             }
+
+            DB::commit(); // Commit the database changes
+            Log::info('Payment Successfully Verified and Processed:', ['topUpId' => $pendingTopUp->id, 'tx_ref' => $data['tx_ref'], 'amount' => $data['amount'], 'userId' => $user->id, 'transaction_id' => $transactionID]);
+
+            // Redirect to dashboard with success message
+            return redirect('/dashboard')->with('success', 'Wallet funded successfully!');
+
         } catch (\Exception $e) {
-            DB::rollback(); // Rollback database changes if anything went wrong
-            Log::error('Database transaction failed during payment verification:', ['exception' => $e->getMessage(), 'tx_ref' => $tx_ref]);
-    
-            // Optionally update the TopUp record status to failed if it was pre-created
-            // $pendingTopUp?->update(['status' => 'Failed']); // Requires PHP 8+ for nullsafe operator
-    
-            return response()->json(['error' => 'Failed to update wallet after payment verification.'], 500);
+            DB::rollback(); // Rollback any database changes if an error occurred within the transaction block
+            Log::error('Database transaction failed during payment verification processing:', ['exception' => $e->getMessage(), 'topUpId' => $pendingTopUp->id, 'tx_ref' => $txRefFromFlutterwave, 'transaction_id' => $transactionID]);
+
+            // Try to update the pending record's status to Failed if it wasn't already
+             if ($pendingTopUp->status === 'Pending') { // Only update if still Pending
+                 try {
+                    $pendingTopUp->status = 'Failed';
+                     // Optionally store the Flutterwave transaction ID here too if it failed after verification
+                     // $pendingTopUp->flutterwave_transaction_id = $transactionID;
+                    $pendingTopUp->save();
+                 } catch (\Exception $rollbackEx) {
+                    // Log if even saving the failed status fails
+                     Log::error('Failed to update pending TopUp status to Failed after processing error:', ['exception' => $rollbackEx->getMessage(), 'topUpId' => $pendingTopUp->id]);
+                 }
+             }
+
+            // Redirect to dashboard with a general error message
+            return redirect('/dashboard')->with('error', 'An error occurred while finalizing your payment.');
         }
     }
 }
