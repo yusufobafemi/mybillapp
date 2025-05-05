@@ -23,7 +23,7 @@ class PaymentController extends Controller
         $user = $request->user();
 
         $response = Http::withToken(env('FLW_SECRET_KEY'))->post('https://api.flutterwave.com/v3/payments', [
-            'tx_ref' => $request['data']['link'],
+            'tx_ref' => $request['data']['tx_ref'],
             'amount' => $request->amount,
             'currency' => 'NGN',
             'redirect_url' => route('payment.callback'), // use named route
