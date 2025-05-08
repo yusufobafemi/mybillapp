@@ -28,7 +28,7 @@ class ServiceController extends Controller
 
     private function processAirtime(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         // Check if user is authenticated BEFORE trying to use $user
         if (!$user) {
