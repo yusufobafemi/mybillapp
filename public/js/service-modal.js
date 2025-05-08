@@ -1,4 +1,6 @@
 $(document).ready(function() {
+    // get current service
+    let currentService = null;
     // Configuration object containing all service definitions
     // Each service has a title, subtitle, icon, color scheme, and form content
     const serviceConfig = {
@@ -199,6 +201,7 @@ $(document).ready(function() {
     // Updates modal content based on service configuration
     function openServiceModal(service) {
         // Get the configuration for the selected service
+        currentService = service; // <-- Store the current service
         const config = serviceConfig[service];
         
         // Update modal header content
@@ -213,6 +216,7 @@ $(document).ready(function() {
         
         // Initialize form interactions
         setupFormInteractions();
+        console.log(currentService);
     }
 
     // Sets up dynamic form interactions
