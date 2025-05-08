@@ -275,10 +275,129 @@ $(document).ready(function() {
         e.stopPropagation();
     });
 
+    // Function to process form submission based on service type
+    function processServiceForm(service) {
+        const formData = {}; // Object to store form values
+    
+        // Depending on the service, validate and collect form data
+        switch(service) {
+            case 'airtime':
+                formData.phoneNumber = $('#modalContent').find('input[type="tel"]').val();
+                formData.network = $('#modalContent').find('select').eq(0).val();
+                formData.amount = $('#modalContent').find('input[type="number"]').val();
+                
+                // Validate form data
+                if (!formData.phoneNumber || !formData.network || !formData.amount) {
+                    alert('Please fill all fields.');
+                    return;
+                }
+                
+                // Proceed with airtime logic (e.g., API call, form submission)
+                alert('Processing Airtime Recharge...');
+                break;
+    
+            case 'data':
+                formData.phoneNumber = $('#modalContent').find('input[type="tel"]').val();
+                formData.network = $('#modalContent').find('select').eq(0).val();
+                formData.dataPlan = $('#modalContent').find('select').eq(1).val();
+                
+                // Validate form data
+                if (!formData.phoneNumber || !formData.network || !formData.dataPlan) {
+                    alert('Please fill all fields.');
+                    return;
+                }
+    
+                // Proceed with data bundle logic (e.g., API call, form submission)
+                alert('Processing Data Bundle Purchase...');
+                break;
+    
+            case 'cable':
+                formData.provider = $('#modalContent').find('select').eq(0).val();
+                formData.smartCard = $('#modalContent').find('input[type="text"]').val();
+                formData.package = $('#modalContent').find('select').eq(1).val();
+    
+                // Validate form data
+                if (!formData.provider || !formData.smartCard || !formData.package) {
+                    alert('Please fill all fields.');
+                    return;
+                }
+    
+                // Proceed with cable TV subscription logic
+                alert('Processing Cable TV Subscription...');
+                break;
+    
+            case 'electricity':
+                formData.company = $('#modalContent').find('select').eq(0).val();
+                formData.meterType = $('#modalContent').find('select').eq(1).val();
+                formData.meterNumber = $('#modalContent').find('input[type="text"]').val();
+                formData.amount = $('#modalContent').find('input[type="number"]').val();
+                
+                // Validate form data
+                if (!formData.company || !formData.meterType || !formData.meterNumber || !formData.amount) {
+                    alert('Please fill all fields.');
+                    return;
+                }
+    
+                // Proceed with electricity payment logic
+                alert('Processing Electricity Bill Payment...');
+                break;
+    
+            case 'internet':
+                formData.provider = $('#modalContent').find('select').eq(0).val();
+                formData.customerId = $('#modalContent').find('input[type="text"]').val();
+                formData.plan = $('#modalContent').find('select').eq(1).val();
+                
+                // Validate form data
+                if (!formData.provider || !formData.customerId || !formData.plan) {
+                    alert('Please fill all fields.');
+                    return;
+                }
+    
+                // Proceed with internet subscription logic
+                alert('Processing Internet Subscription...');
+                break;
+    
+            case 'bills':
+                formData.billType = $('#modalContent').find('select').eq(0).val();
+                formData.biller = $('#modalContent').find('input[type="text"]').val();
+                formData.customerId = $('#modalContent').find('input[type="text"]').eq(1).val();
+                formData.reference = $('#modalContent').find('input[type="text"]').eq(2).val();
+                formData.amount = $('#modalContent').find('input[type="number"]').val();
+                
+                // Validate form data
+                if (!formData.billType || !formData.biller || !formData.customerId || !formData.reference || !formData.amount) {
+                    alert('Please fill all fields.');
+                    return;
+                }
+    
+                // Proceed with bill payment logic
+                alert('Processing Bill Payment...');
+                break;
+    
+            default:
+                alert('Service not supported.');
+                break;
+        }
+    
+        // After validation and processing logic, send form data to server (AJAX, etc.)
+        // Example:
+        // $.post('/submit-service-form', formData, function(response) {
+        //     // Handle response
+        // });
+    }
+
     // Event listener for proceed button
     // Currently shows a simple alert; can be extended for form submission
     $('#proceedServiceModalBtn').on('click', function() {
-        alert('Processing your request...');
-        // TODO: Add form validation and submission logic here
+        $.elegantToastr.success('Success!', 'Processing your request...');
+        
+        // Validate form inputs based on the selected service
+        if (currentService) {
+            // Call the function based on the service type
+            processServiceForm(currentService);
+        } else {
+            alert('No service selected.');
+        }
     });
+    
 });
