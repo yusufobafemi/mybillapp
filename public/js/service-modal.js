@@ -1,14 +1,14 @@
-$(document).ready(function() {
+$(document).ready(function () {
     // get current service
     let currentService = null;
     // Configuration object containing all service definitions
     // Each service has a title, subtitle, icon, color scheme, and form content
     const serviceConfig = {
         airtime: {
-            title: 'Airtime Recharge',
-            subtitle: 'Top up your phone balance',
-            icon: 'fas fa-mobile-alt',
-            color: 'linear-gradient(135deg, #E67E00, #D67200)',
+            title: "Airtime Recharge",
+            subtitle: "Top up your phone balance",
+            icon: "fas fa-mobile-alt",
+            color: "linear-gradient(135deg, #E67E00, #D67200)",
             content: `
                 <div class="srv-form-group">
                     <label class="srv-form-label">Phone Number</label>
@@ -28,13 +28,13 @@ $(document).ready(function() {
                     <label class="srv-form-label">Amount</label>
                     <input type="number" class="srv-form-input" placeholder="Enter amount">
                 </div>
-            `
+            `,
         },
         data: {
-            title: 'Data Bundle',
-            subtitle: 'Purchase internet data',
-            icon: 'fas fa-wifi',
-            color: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
+            title: "Data Bundle",
+            subtitle: "Purchase internet data",
+            icon: "fas fa-wifi",
+            color: "linear-gradient(135deg, #3B82F6, #1D4ED8)",
             content: `
                 <div class="srv-form-group">
                     <label class="srv-form-label">Phone Number</label>
@@ -60,13 +60,13 @@ $(document).ready(function() {
                         <option value="monthly">Monthly (10GB - ₦3,000)</option>
                     </select>
                 </div>
-            `
+            `,
         },
         cable: {
-            title: 'Cable TV Subscription',
-            subtitle: 'Pay for your TV subscription',
-            icon: 'fas fa-tv',
-            color: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+            title: "Cable TV Subscription",
+            subtitle: "Pay for your TV subscription",
+            icon: "fas fa-tv",
+            color: "linear-gradient(135deg, #8B5CF6, #6D28D9)",
             content: `
                 <div class="srv-form-group">
                     <label class="srv-form-label">Provider</label>
@@ -90,13 +90,13 @@ $(document).ready(function() {
                         <option value="premium">Premium - ₦18,400</option>
                     </select>
                 </div>
-            `
+            `,
         },
         electricity: {
-            title: 'Electricity Bill',
-            subtitle: 'Pay for your electricity',
-            icon: 'fas fa-bolt',
-            color: 'linear-gradient(135deg, #F97316, #C2410C)',
+            title: "Electricity Bill",
+            subtitle: "Pay for your electricity",
+            icon: "fas fa-bolt",
+            color: "linear-gradient(135deg, #F97316, #C2410C)",
             content: `
                 <div class="srv-form-group">
                     <label class="srv-form-label">Distribution Company</label>
@@ -124,13 +124,13 @@ $(document).ready(function() {
                     <label class="srv-form-label">Amount</label>
                     <input type="number" class="srv-form-input" placeholder="Enter amount">
                 </div>
-            `
+            `,
         },
         internet: {
-            title: 'Internet Subscription',
-            subtitle: 'Pay for your internet service',
-            icon: 'fas fa-globe',
-            color: 'linear-gradient(135deg, #10B981, #047857)',
+            title: "Internet Subscription",
+            subtitle: "Pay for your internet service",
+            icon: "fas fa-globe",
+            color: "linear-gradient(135deg, #10B981, #047857)",
             content: `
                 <div class="srv-form-group">
                     <label class="srv-form-label">Internet Provider</label>
@@ -156,13 +156,13 @@ $(document).ready(function() {
                         <option value="unlimited">Unlimited (100Mbps) - ₦50,000</option>
                     </select>
                 </div>
-            `
+            `,
         },
         bills: {
-            title: 'Bill Payment',
-            subtitle: 'Pay your bills easily',
-            icon: 'fas fa-file-invoice',
-            color: 'linear-gradient(135deg, #EC4899, #BE185D)',
+            title: "Bill Payment",
+            subtitle: "Pay your bills easily",
+            icon: "fas fa-file-invoice",
+            color: "linear-gradient(135deg, #EC4899, #BE185D)",
             content: `
                 <div class="srv-form-group">
                     <label class="srv-form-label">Bill Type</label>
@@ -193,8 +193,8 @@ $(document).ready(function() {
                     <label class="srv-form-label">Amount</label>
                     <input type="number" class="srv-form-input" placeholder="Enter amount">
                 </div>
-            `
-        }
+            `,
+        },
     };
 
     // Opens the modal for a specific service
@@ -203,17 +203,17 @@ $(document).ready(function() {
         // Get the configuration for the selected service
         currentService = service; // <-- Store the current service
         const config = serviceConfig[service];
-        
+
         // Update modal header content
-        $('#modalTitle').text(config.title); // Set modal title
-        $('#modalSubtitle').text(config.subtitle); // Set modal subtitle
-        $('#modalIcon i').attr('class', config.icon); // Update icon class
-        $('#modalContent').html(config.content); // Insert form content
-        $('#modalHeader').css('background', config.color); // Set header background color
-        
+        $("#modalTitle").text(config.title); // Set modal title
+        $("#modalSubtitle").text(config.subtitle); // Set modal subtitle
+        $("#modalIcon i").attr("class", config.icon); // Update icon class
+        $("#modalContent").html(config.content); // Insert form content
+        $("#modalHeader").css("background", config.color); // Set header background color
+
         // Show modal with active class for animation
-        $('#serviceModal').addClass('active');
-        
+        $("#serviceModal").addClass("active");
+
         // Initialize form interactions
         setupFormInteractions();
         console.log(currentService);
@@ -223,20 +223,20 @@ $(document).ready(function() {
     // Enables/disables select elements based on previous selections
     function setupFormInteractions() {
         // Find all select elements in the modal content
-        const $selects = $('#modalContent').find('.srv-form-select');
-        
+        const $selects = $("#modalContent").find(".srv-form-select");
+
         // Only proceed if there are multiple select elements
         if ($selects.length > 1) {
             // Add change event listener to the first select
-            $selects.eq(0).on('change', function() {
+            $selects.eq(0).on("change", function () {
                 // Get the selected value
                 const selectedValue = $(this).val();
-                
+
                 // Enable/disable the second select based on selection
                 if (selectedValue) {
-                    $selects.eq(1).prop('disabled', false);
+                    $selects.eq(1).prop("disabled", false);
                 } else {
-                    $selects.eq(1).prop('disabled', true);
+                    $selects.eq(1).prop("disabled", true);
                 }
             });
         }
@@ -245,140 +245,236 @@ $(document).ready(function() {
     // Closes the service modal
     // Removes active class to trigger closing animation
     function closeServiceModal() {
-        $('#serviceModal').removeClass('active');
+        $("#serviceModal").removeClass("active");
     }
 
     // Event listener for service grid items
     // Opens modal when a service item is clicked
-    $('.srv-grid-item-card').on('click', function() {
+    $(".srv-grid-item-card").on("click", function () {
         // Get the service identifier from data attribute
-        const service = $(this).data('service');
+        const service = $(this).data("service");
         openServiceModal(service);
     });
 
     // Event listeners for closing modal
     // Handles both close button and cancel button clicks
-    $('#closeServiceModal, #cancelServiceModalBtn').on('click', closeServiceModal);
+    $("#closeServiceModal, #cancelServiceModalBtn").on(
+        "click",
+        closeServiceModal
+    );
 
     // Event listener for modal overlay
     // Closes modal when clicking outside the modal content
-    $('#serviceModal').on('click', function(e) {
+    $("#serviceModal").on("click", function (e) {
         // Check if the click target is the overlay itself
-        if ($(e.target).is('#serviceModal')) {
+        if ($(e.target).is("#serviceModal")) {
             closeServiceModal();
         }
     });
 
     // Prevents modal from closing when clicking inside
     // Stops event propagation to the overlay
-    $('.srv-modal').on('click', function(e) {
+    $(".srv-modal").on("click", function (e) {
         e.stopPropagation();
     });
 
     // Function to process form submission based on service type
     function processServiceForm(service) {
         const formData = {}; // Object to store form values
-    
+
         // Depending on the service, validate and collect form data
-        switch(service) {
-            case 'airtime':
-                formData.phoneNumber = $('#modalContent').find('input[type="tel"]').val();
-                formData.network = $('#modalContent').find('select').eq(0).val();
-                formData.amount = $('#modalContent').find('input[type="number"]').val();
-                
+        switch (service) {
+            case "airtime":
+                formData.phoneNumber = $("#modalContent")
+                    .find('input[type="tel"]')
+                    .val();
+                formData.network = $("#modalContent")
+                    .find("select")
+                    .eq(0)
+                    .val();
+                formData.amount = $("#modalContent")
+                    .find('input[type="number"]')
+                    .val();
+
+                // User's balance (replace with actual balance from backend or global variable)
+                const userBalance = parseFloat($("#userBalance").text()); // Assuming the balance is displayed somewhere
+
                 // Validate form data
-                if (!formData.phoneNumber || !formData.network || !formData.amount) {
-                    $.elegantToastr.warning('Warning!', 'Please fill all inputs...');
+                if (
+                    !formData.phoneNumber ||
+                    !formData.network ||
+                    !formData.amount
+                ) {
+                    $.elegantToastr.error(
+                        "Warning!",
+                        "Please fill all inputs..."
+                    );
                     return;
                 }
-                
+
+                // Validate if the amount is not greater than the user's balance
+                if (parseFloat(formData.amount) > userBalance) {
+                    $.elegantToastr.warning(
+                        "Insufficient Balance",
+                        "Your balance is insufficient for this recharge."
+                    );
+                    return;
+                }
+
                 // Proceed with airtime logic (e.g., API call, form submission)
-                alert('Processing Airtime Recharge...');
+                alert("Processing Airtime Recharge...");
                 break;
-    
-            case 'data':
-                formData.phoneNumber = $('#modalContent').find('input[type="tel"]').val();
-                formData.network = $('#modalContent').find('select').eq(0).val();
-                formData.dataPlan = $('#modalContent').find('select').eq(1).val();
-                
+
+            case "data":
+                formData.phoneNumber = $("#modalContent")
+                    .find('input[type="tel"]')
+                    .val();
+                formData.network = $("#modalContent")
+                    .find("select")
+                    .eq(0)
+                    .val();
+                formData.dataPlan = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .val();
+
                 // Validate form data
-                if (!formData.phoneNumber || !formData.network || !formData.dataPlan) {
-                    alert('Please fill all fields.');
+                if (
+                    !formData.phoneNumber ||
+                    !formData.network ||
+                    !formData.dataPlan
+                ) {
+                    alert("Please fill all fields.");
                     return;
                 }
-    
+
                 // Proceed with data bundle logic (e.g., API call, form submission)
-                alert('Processing Data Bundle Purchase...');
+                alert("Processing Data Bundle Purchase...");
                 break;
-    
-            case 'cable':
-                formData.provider = $('#modalContent').find('select').eq(0).val();
-                formData.smartCard = $('#modalContent').find('input[type="text"]').val();
-                formData.package = $('#modalContent').find('select').eq(1).val();
-    
+
+            case "cable":
+                formData.provider = $("#modalContent")
+                    .find("select")
+                    .eq(0)
+                    .val();
+                formData.smartCard = $("#modalContent")
+                    .find('input[type="text"]')
+                    .val();
+                formData.package = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .val();
+
                 // Validate form data
-                if (!formData.provider || !formData.smartCard || !formData.package) {
-                    alert('Please fill all fields.');
+                if (
+                    !formData.provider ||
+                    !formData.smartCard ||
+                    !formData.package
+                ) {
+                    alert("Please fill all fields.");
                     return;
                 }
-    
+
                 // Proceed with cable TV subscription logic
-                alert('Processing Cable TV Subscription...');
+                alert("Processing Cable TV Subscription...");
                 break;
-    
-            case 'electricity':
-                formData.company = $('#modalContent').find('select').eq(0).val();
-                formData.meterType = $('#modalContent').find('select').eq(1).val();
-                formData.meterNumber = $('#modalContent').find('input[type="text"]').val();
-                formData.amount = $('#modalContent').find('input[type="number"]').val();
-                
+
+            case "electricity":
+                formData.company = $("#modalContent")
+                    .find("select")
+                    .eq(0)
+                    .val();
+                formData.meterType = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .val();
+                formData.meterNumber = $("#modalContent")
+                    .find('input[type="text"]')
+                    .val();
+                formData.amount = $("#modalContent")
+                    .find('input[type="number"]')
+                    .val();
+
                 // Validate form data
-                if (!formData.company || !formData.meterType || !formData.meterNumber || !formData.amount) {
-                    alert('Please fill all fields.');
+                if (
+                    !formData.company ||
+                    !formData.meterType ||
+                    !formData.meterNumber ||
+                    !formData.amount
+                ) {
+                    alert("Please fill all fields.");
                     return;
                 }
-    
+
                 // Proceed with electricity payment logic
-                alert('Processing Electricity Bill Payment...');
+                alert("Processing Electricity Bill Payment...");
                 break;
-    
-            case 'internet':
-                formData.provider = $('#modalContent').find('select').eq(0).val();
-                formData.customerId = $('#modalContent').find('input[type="text"]').val();
-                formData.plan = $('#modalContent').find('select').eq(1).val();
-                
+
+            case "internet":
+                formData.provider = $("#modalContent")
+                    .find("select")
+                    .eq(0)
+                    .val();
+                formData.customerId = $("#modalContent")
+                    .find('input[type="text"]')
+                    .val();
+                formData.plan = $("#modalContent").find("select").eq(1).val();
+
                 // Validate form data
-                if (!formData.provider || !formData.customerId || !formData.plan) {
-                    alert('Please fill all fields.');
+                if (
+                    !formData.provider ||
+                    !formData.customerId ||
+                    !formData.plan
+                ) {
+                    alert("Please fill all fields.");
                     return;
                 }
-    
+
                 // Proceed with internet subscription logic
-                alert('Processing Internet Subscription...');
+                alert("Processing Internet Subscription...");
                 break;
-    
-            case 'bills':
-                formData.billType = $('#modalContent').find('select').eq(0).val();
-                formData.biller = $('#modalContent').find('input[type="text"]').val();
-                formData.customerId = $('#modalContent').find('input[type="text"]').eq(1).val();
-                formData.reference = $('#modalContent').find('input[type="text"]').eq(2).val();
-                formData.amount = $('#modalContent').find('input[type="number"]').val();
-                
+
+            case "bills":
+                formData.billType = $("#modalContent")
+                    .find("select")
+                    .eq(0)
+                    .val();
+                formData.biller = $("#modalContent")
+                    .find('input[type="text"]')
+                    .val();
+                formData.customerId = $("#modalContent")
+                    .find('input[type="text"]')
+                    .eq(1)
+                    .val();
+                formData.reference = $("#modalContent")
+                    .find('input[type="text"]')
+                    .eq(2)
+                    .val();
+                formData.amount = $("#modalContent")
+                    .find('input[type="number"]')
+                    .val();
+
                 // Validate form data
-                if (!formData.billType || !formData.biller || !formData.customerId || !formData.reference || !formData.amount) {
-                    alert('Please fill all fields.');
+                if (
+                    !formData.billType ||
+                    !formData.biller ||
+                    !formData.customerId ||
+                    !formData.reference ||
+                    !formData.amount
+                ) {
+                    alert("Please fill all fields.");
                     return;
                 }
-    
+
                 // Proceed with bill payment logic
-                alert('Processing Bill Payment...');
+                alert("Processing Bill Payment...");
                 break;
-    
+
             default:
-                alert('Service not supported.');
+                alert("Service not supported.");
                 break;
         }
-    
+
         // After validation and processing logic, send form data to server (AJAX, etc.)
         // Example:
         // $.post('/submit-service-form', formData, function(response) {
@@ -388,14 +484,13 @@ $(document).ready(function() {
 
     // Event listener for proceed button
     // Currently shows a simple alert; can be extended for form submission
-    $('#proceedServiceModalBtn').on('click', function() {
+    $("#proceedServiceModalBtn").on("click", function () {
         // Validate form inputs based on the selected service
         if (currentService) {
             // Call the function based on the service type
             processServiceForm(currentService);
         } else {
-            alert('No service selected.');
+            alert("No service selected.");
         }
     });
-    
 });

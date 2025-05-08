@@ -6,7 +6,7 @@
         <span class="card-icon"><i class="{{ $icon }}"></i></span>
     </div>
     <div class="balance-amount">
-        <h2>{{ $amount }}</h2>
+        <h2 id="userBalance">{{ $amount }}</h2>
         <span class="balance-change {{ $changeType }}">{{ $changeText }}</span>
     </div>
     <div class="action-buttons">
