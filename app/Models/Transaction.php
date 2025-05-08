@@ -12,7 +12,7 @@ class Transaction extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'transaction_type_id', 'amount', 'status', 'reference'
+        'user_id', 'transaction_type_id', 'amount', 'status', 'reference', 'description',
     ];
 
     // let us create default transaction

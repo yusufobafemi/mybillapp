@@ -285,6 +285,7 @@ $(document).ready(function () {
         // Depending on the service, validate and collect form data
         switch (service) {
             case "airtime":
+                // Get values from modal
                 formData.phoneNumber = $("#modalContent")
                     .find('input[type="tel"]')
                     .val();
@@ -296,10 +297,12 @@ $(document).ready(function () {
                     .find('input[type="number"]')
                     .val();
 
-                // User's balance (replace with actual balance from backend or global variable)
-                const userBalance = parseFloat($("#userBalance").text()); // Assuming the balance is displayed somewhere
+                // Get user balance from HTML and clean the text
+                const balanceText = $("#userBalance").text();
+                const cleanedText = balanceText.replace(/[₦,]/g, "");
+                const userBalance = parseFloat(cleanedText);
 
-                // Validate form data
+                // Validate inputs
                 if (
                     !formData.phoneNumber ||
                     !formData.network ||
@@ -312,17 +315,72 @@ $(document).ready(function () {
                     return;
                 }
 
-                // Validate if the amount is not greater than the user's balance
                 if (parseFloat(formData.amount) > userBalance) {
-                    $.elegantToastr.warning(
+                    $.elegantToastr.error(
                         "Insufficient Balance",
                         "Your balance is insufficient for this recharge."
                     );
                     return;
                 }
 
-                // Proceed with airtime logic (e.g., API call, form submission)
-                alert("Processing Airtime Recharge...");
+                // Show SweetAlert confirmation before proceeding
+                Swal.fire({
+                    title: "Confirm Airtime Purchase",
+                    html: `
+                        <div style="text-align: left; font-size: 16px; line-height: 1.6; color: #333; padding: 12px; background-color: #f9f9f9; border-radius: 6px;">
+                            <p style="margin: 8px 0;display: flex;justify-content: space-between;"><strong>Network:</strong> ${formData.network.toUpperCase()}</p>
+                            <p style="margin: 8px 0;display: flex;justify-content: space-between;"><strong>Phone:</strong> ${formData.phoneNumber}</p>
+                            <p style="margin: 8px 0;display: flex;justify-content: space-between;"><strong>Amount:</strong> ₦${Number(formData.amount).toLocaleString()}</p>
+                        </div>
+                    `,
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, continue",
+                    cancelButtonText: "Cancel",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Show SweetAlert loading while processing
+                        Swal.fire({
+                            title: "Processing...",
+                            text: "Please wait while we recharge your line.",
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
+
+                        // Add the 'service' field
+                        formData.service = 'airtime';
+
+                        //AJAX request to process airtime
+                        $.ajax({
+                            url: "/api/process-service",
+                            method: "POST",
+                            data: formData,
+                            success: function (response) {
+                                if(response.status = "success"){
+                                    Swal.fire({
+                                        title: "Success!",
+                                        text: "Airtime recharge completed.",
+                                        icon: "success",
+                                    });
+                                    if (response.new_balance !== undefined) {
+                                        const formattedBalance = `₦${Number(response.new_balance).toLocaleString()}`;
+                                        $("#userBalance").text(formattedBalance);
+                                    }
+                                }
+                                
+                            },
+                            error: function (error) {
+                                Swal.fire({
+                                    title: "Error!",
+                                    text: "Something went wrong. Please try again.",
+                                    icon: "error",
+                                });
+                            },
+                        });
+                    }
+                });
                 break;
 
             case "data":
@@ -474,12 +532,6 @@ $(document).ready(function () {
                 alert("Service not supported.");
                 break;
         }
-
-        // After validation and processing logic, send form data to server (AJAX, etc.)
-        // Example:
-        // $.post('/submit-service-form', formData, function(response) {
-        //     // Handle response
-        // });
     }
 
     // Event listener for proceed button

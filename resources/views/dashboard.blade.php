@@ -277,6 +277,7 @@
             logo: "{{ asset('images/logo.png') }}", // or your logo url
         };
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://checkout.flutterwave.com/v3.js"></script>
     <script src="{{ asset('js/user-dashboard.js') }}"></script>
     <script src="{{ asset('js/wallet-modal.js') }}"></script>
