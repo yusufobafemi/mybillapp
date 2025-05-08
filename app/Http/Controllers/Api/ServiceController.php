@@ -46,7 +46,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave API to buy airtime
-            $response = Http::withToken(env('FLW_SECRET_KEY_TEST'))
+            $response = Http::withToken(env('FLW_SECRET_KEY'))
                 ->post('https://api.flutterwave.com/v3/bills', [
                     'country' => 'NG',
                     'customer' => $request->phoneNumber,
