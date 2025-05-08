@@ -29,7 +29,12 @@ class ServiceController extends Controller
     private function processAirtime(Request $request)
     {
         $user = auth()->user();
-        $txRef = 'TXN_' . auth()->id() . '_' . time() . '_' . Str::random(8);
+
+        // Check if user is authenticated BEFORE trying to use $user
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+        $txRef = 'TXN_' . $user->id . '_' . time() . '_' . Str::random(8);
 
         // Validate incoming request data
         $request->validate([
@@ -43,6 +48,10 @@ class ServiceController extends Controller
         $network = $request->input('network');
         $amount = $request->input('amount');
         $reference = $txRef;
+
+        if ($user->balance < $amount) {
+            return response()->json(['error' => 'Insufficient balance.'], 400);
+       }
 
         try {
             // Call Flutterwave API to buy airtime
@@ -60,11 +69,10 @@ class ServiceController extends Controller
 
             // Log the response from Flutterwave (for debugging)
             Log::info('Flutterwave Airtime Purchase Response: ', $data);
-
-            // deduct user balance
-            $user->decrement('balance', $amount);
             // Check if the response is successful
             if (isset($data['status']) && $data['status'] === 'success') {
+                // deduct user balance
+                $user->decrement('balance', $amount);
                 // Create the transaction record in your database
                 $transaction = \App\Models\Transaction::create([
                     'user_id' => auth()->id(),
