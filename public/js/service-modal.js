@@ -288,7 +288,7 @@ $(document).ready(function() {
                 
                 // Validate form data
                 if (!formData.phoneNumber || !formData.network || !formData.amount) {
-                    alert('Please fill all fields.');
+                    $.elegantToastr.warning('Warning!', 'Please fill all inputs...');
                     return;
                 }
                 
@@ -389,8 +389,6 @@ $(document).ready(function() {
     // Event listener for proceed button
     // Currently shows a simple alert; can be extended for form submission
     $('#proceedServiceModalBtn').on('click', function() {
-        $.elegantToastr.success('Success!', 'Processing your request...');
-        
         // Validate form inputs based on the selected service
         if (currentService) {
             // Call the function based on the service type
