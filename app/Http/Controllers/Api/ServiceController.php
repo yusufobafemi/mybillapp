@@ -75,7 +75,7 @@ class ServiceController extends Controller
                 $user->decrement('balance', $amount);
                 // Create the transaction record in your database
                 $transaction = \App\Models\Transaction::create([
-                    'user_id' => auth()->id(),
+                    'user_id' => $user->id,
                     'transaction_type_id' => 2,  // 2 for airtime purchase
                     'amount' => $amount,
                     'status' => 'successful',
