@@ -1,7 +1,12 @@
+// Set up CSRF token for all AJAX requests
+$.ajaxSetup({
+    headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+    }
+});
 $(document).ready(function () {
     // get current service
     let currentService = null;
-    // Configuration object containing all service definitions
     // Each service has a title, subtitle, icon, color scheme, and form content
     const serviceConfig = {
         airtime: {
@@ -354,7 +359,7 @@ $(document).ready(function () {
 
                         //AJAX request to process airtime
                         $.ajax({
-                            url: "/api/process-service",
+                            url: "/process-service",
                             method: "POST",
                             data: formData,
                             success: function (response) {

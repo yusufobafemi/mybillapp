@@ -11,6 +11,8 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\Api\ServiceController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -105,3 +107,5 @@ Route::post('/webhook', function (Request $request) {
 
     return response()->json(['status' => 'Deployment triggered', 'output' => $output]);
 });
+
+Route::post('/process-service', [ServiceController::class, 'processService'])->middleware('auth');

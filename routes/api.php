@@ -19,6 +19,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::middleware('auth:api')->group(function () {
-    Route::post('/process-service', [ServiceController::class, 'processService']);
-});
+// Route::post('/process-service', [ServiceController::class, 'processService']);
+
