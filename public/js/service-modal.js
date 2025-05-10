@@ -1,12 +1,14 @@
 // Set up CSRF token for all AJAX requests
 $.ajaxSetup({
     headers: {
-        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-    }
+        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+    },
 });
+
 $(document).ready(function () {
     // get current service
     let currentService = null;
+
     // Each service has a title, subtitle, icon, color scheme, and form content
     const serviceConfig = {
         airtime: {
@@ -49,20 +51,21 @@ $(document).ready(function () {
                     <label class="srv-form-label">Network Provider</label>
                     <select class="srv-form-select">
                         <option value="">Select provider</option>
-                        <option value="mtn">MTN</option>
-                        <option value="airtel">Airtel</option>
-                        <option value="glo">Glo</option>
-                        <option value="9mobile">9Mobile</option>
+                        <option value="mtn" data-billercode="BIL108">MTN</option>
+                        <option value="airtel" data-billercode="BIL110">Airtel</option>
+                        <option value="glo" data-billercode="BIL109">Glo</option>
+                        <option value="9mobile" data-billercode="BIL111">9Mobile</option>
                     </select>
                 </div>
-                <div class="srv-form-group">
+                <div id="data-plans" class="srv-form-group disabled-select">
                     <label class="srv-form-label">Data Plan</label>
-                    <select class="srv-form-select">
+                    <div style="display: flex; justify-content: center;">
+                        <span id="data-plans-loader" class="srv-loader" style="display: none; font-size: 0.9em;">
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                        </span>
+                    </div>
+                    <select class="srv-form-select" disabled>
                         <option value="">Select data plan</option>
-                        <option value="daily">Daily (100MB - ₦100)</option>
-                        <option value="weekly">Weekly (1GB - ₦500)</option>
-                        <option value="monthly">Monthly (3GB - ₦1,000)</option>
-                        <option value="monthly">Monthly (10GB - ₦3,000)</option>
                     </select>
                 </div>
             `,
@@ -219,38 +222,158 @@ $(document).ready(function () {
         // Show modal with active class for animation
         $("#serviceModal").addClass("active");
 
-        // Initialize form interactions
+        // Initialize form interactions ONLY AFTER content is loaded
         setupFormInteractions();
         console.log(currentService);
     }
 
-    // Sets up dynamic form interactions
-    // Enables/disables select elements based on previous selections
+    // Sets up dynamic form interactions based on the current service
+    // ADDED/MODIFIED: This function now contains the logic for the Data Bundle dynamic selects.
     function setupFormInteractions() {
-        // Find all select elements in the modal content
-        const $selects = $("#modalContent").find(".srv-form-select");
-
-        // Only proceed if there are multiple select elements
-        if ($selects.length > 1) {
-            // Add change event listener to the first select
-            $selects.eq(0).on("change", function () {
-                // Get the selected value
-                const selectedValue = $(this).val();
-
-                // Enable/disable the second select based on selection
-                if (selectedValue) {
-                    $selects.eq(1).prop("disabled", false);
+        // --- Specific interaction for Data Bundle service ---
+        if (currentService === "data") {
+            const $modalContent = $("#modalContent");
+            const $networkSelect = $modalContent.find("select").eq(0); // Network select
+            const $dataPlanSelect = $modalContent.find("select").eq(1); // Data Plan select
+            const $dataPlansGroup = $("#data-plans"); // The div containing the data plan select
+            const $loader = $("#data-plans-loader"); // Get the loader element
+    
+            // Add change event listener to the Network Provider select
+            $networkSelect.on("change", function () {
+                const selectedNetwork = $(this).val();
+                // GET THE BILLER CODE
+                const getbillercode = $(this).find('option:selected').data('billercode');
+    
+                // --- Always reset and disable data plan select when network changes ---
+                // Clear existing options (except maybe a placeholder if desired before fetch)
+                $dataPlanSelect.empty();
+                // Add a temporary placeholder or keep empty while loading
+                $dataPlanSelect.append('<option disabled selected value="">Loading plans...</option>'); // Indicate loading
+                $dataPlanSelect.prop("disabled", true); // Disable
+                $dataPlansGroup.addClass("disabled-select"); // Add disabled styling class
+                $dataPlanSelect.show(); // Ensure it's visible with the loading text
+    
+                if (selectedNetwork) {
+                    // Show the loader before starting the fetch
+                    $loader.show();
+                    // Optional: Hide the select element while loading (already showing 'Loading plans...')
+    
+                    // --- AJAX CALL TO FETCH DATA PLANS ---
+                    $.ajax({
+                        url: '/get-data-info', // Replace with your actual endpoint
+                        method: 'POST',
+                        data: { billercode: getbillercode },
+                        beforeSend: function () {
+                            // Done before $.ajax call now, but can keep here too
+                            $loader.show();
+                            // $dataPlanSelect.hide(); // Decided to show 'Loading plans...' text instead
+                        },
+                        success: function (response) {
+                            $dataPlanSelect.empty(); // Clear 'Loading plans...'
+    
+                            if (response.status === "success" && response.data && response.data.length > 0) {
+                                $dataPlanSelect.append('<option disabled selected value="">Select a plan</option>');
+    
+                                response.data.forEach(function (item) {
+                                    $dataPlanSelect.append(
+                                        $('<option></option>')
+                                            .val(item.item_code)
+                                            .text(item.name + ' - ₦' + item.amount)
+                                            // Keep data attributes if needed later
+                                            .attr('data-billercode', selectedNetwork) // Or item.billercode if available
+                                            .attr('data-itemcode', item.item_code)
+                                            .attr('data-dataplan', item.name)
+                                    );
+                                });
+    
+                                // --- ENABLE THE SELECT AND REMOVE DISABLED CLASS ---
+                                $dataPlanSelect.prop("disabled", false); // <-- ADDED: Enable the select
+                                $dataPlansGroup.removeClass("disabled-select"); // <-- ADDED: Remove the disabled styling class
+                                // $dataPlanSelect.show(); // Select is already visible
+    
+                            } else {
+                                // Handle case where no plans are returned or response is empty
+                                $dataPlanSelect.append('<option disabled selected value="">No data plans found</option>');
+                                // --- ENSURE IT STAYS DISABLED AND STYLED AS DISABLED ---
+                                $dataPlanSelect.prop("disabled", true); // <-- ADDED: Explicitly keep/set disabled
+                                $dataPlansGroup.addClass("disabled-select"); // <-- ADDED: Explicitly keep/set disabled styling
+                                // $dataPlanSelect.show(); // Select is already visible
+    
+                                // Optional: Show an info message
+                                $.elegantToastr.info(
+                                    "Info",
+                                    `No data plans found for the selected network.` // Or use network name if available
+                                );
+                            }
+                        },
+                        error: function () {
+                            // Handle AJAX error
+                            $dataPlanSelect.empty(); // Clear 'Loading plans...'
+                            $dataPlanSelect.html('<option disabled selected value="">Failed to load data plans</option>');
+                            // --- ENSURE IT STAYS DISABLED AND STYLED AS DISABLED ---
+                            $dataPlanSelect.prop("disabled", true); // <-- ADDED: Explicitly keep/set disabled
+                            $dataPlansGroup.addClass("disabled-select"); // <-- ADDED: Explicitly keep/set disabled styling
+                            // $dataPlanSelect.show(); // Select is already visible
+    
+                            // Optional: Show an error message
+                            $.elegantToastr.error("Error", "Failed to load data plans.");
+                        },
+                        complete: function () {
+                            // Hide the loader regardless of success or error
+                            $loader.hide();
+                        }
+                    });
+    
                 } else {
-                    $selects.eq(1).prop("disabled", true);
+                    // --- If network is cleared (back to "Select provider") ---
+                    // Reset, disable, hide loader
+                    $loader.hide();
+                    $dataPlanSelect.empty(); // Clear any loaded options
+                    $dataPlanSelect.append('<option disabled selected value="">Select a network first</option>'); // Placeholder when no network selected
+                    $dataPlanSelect.prop("disabled", true); // <-- Keep/set disabled
+                    $dataPlansGroup.addClass("disabled-select"); // <-- Keep/set disabled styling
+                    $dataPlanSelect.show(); // Ensure it's visible with the placeholder
                 }
             });
+    
+            // --- Initial state setup when the modal is opened ---
+            // This runs once when setupFormInteractions is called
+            if (!$networkSelect.val()) {
+                // If no network is pre-selected, ensure the data plan select is disabled initially
+                $dataPlanSelect.empty(); // Start empty or add an initial placeholder
+                $dataPlanSelect.append('<option disabled selected value="">Select a network first</option>'); // Initial placeholder
+                $dataPlanSelect.prop("disabled", true);
+                $dataPlansGroup.addClass("disabled-select");
+                $loader.hide(); // Ensure loader is hidden initially
+                $dataPlanSelect.show(); // Ensure the placeholder is visible
+            } else {
+                // If a network *is* pre-selected (e.g., on edit)
+                // You might want to trigger the change event here
+                // $networkSelect.trigger('change'); // Uncomment this line if you want to load plans on modal open if a network is already selected
+                // If you don't trigger change, ensure the data plan select is either disabled or populated based on your app's logic
+            }
         }
+        // --- Add other service-specific form interactions here if needed ---
+        // ...
     }
 
     // Closes the service modal
     // Removes active class to trigger closing animation
     function closeServiceModal() {
         $("#serviceModal").removeClass("active");
+        // Clear all inputs and selects inside the modal
+        $("#modalContent")
+            .find("input, select, textarea")
+            .val("") // clears value
+            .prop("selectedIndex", 0); // resets selects
+
+        // ADDED: Remove the change event listeners specifically added to the modal content
+        // This helps prevent duplicate listeners if the modal is opened/closed many times.
+        $("#modalContent").off("change");
+
+        // Note: We don't necessarily need to trigger change here on closing,
+        // as setupFormInteractions will configure the state correctly when the modal re-opens.
+        // .trigger("change"); // triggers change event if needed
     }
 
     // Event listener for service grid items
@@ -290,7 +413,7 @@ $(document).ready(function () {
         // Depending on the service, validate and collect form data
         switch (service) {
             case "airtime":
-                // Get values from modal
+                // ... (Airtime logic remains mostly the same, refined error handling/balance check)
                 formData.phoneNumber = $("#modalContent")
                     .find('input[type="tel"]')
                     .val();
@@ -302,12 +425,10 @@ $(document).ready(function () {
                     .find('input[type="number"]')
                     .val();
 
-                // Get user balance from HTML and clean the text
                 const balanceText = $("#userBalance").text();
                 const cleanedText = balanceText.replace(/[₦,]/g, "");
                 const userBalance = parseFloat(cleanedText);
 
-                // Validate inputs
                 if (
                     !formData.phoneNumber ||
                     !formData.network ||
@@ -319,7 +440,13 @@ $(document).ready(function () {
                     );
                     return;
                 }
-
+                if (parseFloat(formData.amount) <= 0) {
+                    $.elegantToastr.error(
+                        "Invalid Amount",
+                        "Please enter a valid amount."
+                    );
+                    return;
+                }
                 if (parseFloat(formData.amount) > userBalance) {
                     $.elegantToastr.error(
                         "Insufficient Balance",
@@ -328,23 +455,15 @@ $(document).ready(function () {
                     return;
                 }
 
-                // Show SweetAlert confirmation before proceeding
                 Swal.fire({
                     title: "Confirm Airtime Purchase",
-                    html: `
-                        <div style="text-align: left; font-size: 16px; line-height: 1.6; color: #333; padding: 12px; background-color: #f9f9f9; border-radius: 6px;">
-                            <p style="margin: 8px 0;display: flex;justify-content: space-between;"><strong>Network:</strong> ${formData.network.toUpperCase()}</p>
-                            <p style="margin: 8px 0;display: flex;justify-content: space-between;"><strong>Phone:</strong> ${formData.phoneNumber}</p>
-                            <p style="margin: 8px 0;display: flex;justify-content: space-between;"><strong>Amount:</strong> ₦${Number(formData.amount).toLocaleString()}</p>
-                        </div>
-                    `,
+                    html: `Are you sure you want to purchase ₦${formData.amount} airtime for ${formData.phoneNumber}`,
                     icon: "question",
                     showCancelButton: true,
                     confirmButtonText: "Yes, continue",
                     cancelButtonText: "Cancel",
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Show SweetAlert loading while processing
                         Swal.fire({
                             title: "Processing...",
                             text: "Please wait while we recharge your line.",
@@ -353,33 +472,62 @@ $(document).ready(function () {
                                 Swal.showLoading();
                             },
                         });
-
-                        // Add the 'service' field
-                        formData.service = 'airtime';
-
-                        //AJAX request to process airtime
+                        formData.service = "airtime";
                         $.ajax({
                             url: "/process-service",
                             method: "POST",
                             data: formData,
                             success: function (response) {
-                                if(response.status = "success"){
+                                /* ... success handling ... */
+                                if (response && response.status === "success") {
                                     Swal.fire({
                                         title: "Success!",
-                                        text: "Airtime recharge completed.",
+                                        text: response.message || "...",
                                         icon: "success",
                                     });
-                                    if (response.new_balance !== undefined) {
-                                        const formattedBalance = `₦${Number(response.new_balance).toLocaleString()}`;
-                                        $("#userBalance").text(formattedBalance);
+                                    if (
+                                        response.new_balance !== undefined &&
+                                        $("#userBalance").length
+                                    ) {
+                                        $("#userBalance").text(
+                                            `₦${Number(
+                                                response.new_balance
+                                            ).toLocaleString()}`
+                                        );
                                     }
+                                    closeServiceModal();
+                                } else {
+                                    Swal.fire({
+                                        title: "Failed!",
+                                        text: response.message || "...",
+                                        icon: "error",
+                                    });
                                 }
-                                
                             },
-                            error: function (error) {
+                            error: function (xhr, status, error) {
+                                /* ... error handling ... */
+                                console.error(
+                                    "AJAX Error:",
+                                    status,
+                                    error,
+                                    xhr.responseText
+                                );
+                                let errorMessage =
+                                    "Something went wrong. Please try again.";
+                                if (
+                                    xhr.responseJSON &&
+                                    xhr.responseJSON.message
+                                ) {
+                                    errorMessage = xhr.responseJSON.message;
+                                } else if (xhr.responseText) {
+                                    errorMessage =
+                                        "Error: " +
+                                        xhr.responseText.substring(0, 100) +
+                                        "...";
+                                }
                                 Swal.fire({
                                     title: "Error!",
-                                    text: "Something went wrong. Please try again.",
+                                    text: errorMessage,
                                     icon: "error",
                                 });
                             },
@@ -389,6 +537,10 @@ $(document).ready(function () {
                 break;
 
             case "data":
+                // MODIFIED: Data collection and validation for submission
+                // The dynamic behavior (enabling/disabling select, populating options)
+                // was moved to the setupFormInteractions function.
+                // This block now only focuses on collecting final values and submitting.
                 formData.phoneNumber = $("#modalContent")
                     .find('input[type="tel"]')
                     .val();
@@ -399,50 +551,181 @@ $(document).ready(function () {
                 formData.dataPlan = $("#modalContent")
                     .find("select")
                     .eq(1)
-                    .val();
+                    .val(); // Get the selected data plan value
 
-                // Validate form data
+                // Validate form data BEFORE submitting
                 if (
                     !formData.phoneNumber ||
                     !formData.network ||
-                    !formData.dataPlan
+                    !formData.dataPlan // Ensure a data plan is actually selected
                 ) {
-                    alert("Please fill all fields.");
+                    $.elegantToastr.error(
+                        "Warning!",
+                        "Please fill all inputs..."
+                    );
                     return;
                 }
 
-                // Proceed with data bundle logic (e.g., API call, form submission)
-                alert("Processing Data Bundle Purchase...");
+                // ADDED: Extract amount from the selected plan text for balance check
+                const selectedPlanText = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .find("option:selected")
+                    .text();
+                const amountMatch = selectedPlanText.match(/₦([\d,]+)/); // Use regex to find the price
+                formData.amount = amountMatch
+                    ? parseFloat(amountMatch[1].replace(/,/g, ""))
+                    : 0; // Store amount
+                const selectedBillerCode = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .find("option:selected")
+                    .data('billercode');
+                const selectedItemCode = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .find("option:selected")
+                    .data('itemcode');
+                formData.biller_code = selectedBillerCode;
+                formData.item_code = selectedItemCode;
+                const balanceTextData = $("#userBalance").text();
+                const cleanedTextData = balanceTextData.replace(/[₦,]/g, "");
+                const userBalanceData = parseFloat(cleanedTextData);
+                const match = selectedPlanText.match(/^(.+?\d+(?:\.\d+)?\s*(?:GB|MB))/i);
+                const planShortName = match ? match[1] : selectedPlanText;
+                formData.shortplan = planShortName;
+                // ADDED: Validate parsed amount and check balance
+                if (formData.amount <= 0) {
+                    $.elegantToastr.error(
+                        "Invalid Plan",
+                        "Could not determine plan amount or amount is invalid."
+                    );
+                    return;
+                }
+                if (formData.amount > userBalanceData) {
+                    $.elegantToastr.error(
+                        "Insufficient Balance",
+                        "Your balance is insufficient for this data plan."
+                    );
+                    return;
+                }
+
+                // --- AJAX submission for data would go here, similar to Airtime ---
+                Swal.fire({
+                    title: "Confirm Data Purchase",
+                    html: `Purchase ${selectedPlanText} for ${formData.phoneNumber}`,
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, continue",
+                    cancelButtonText: "Cancel",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: "Processing...",
+                            text: "Please wait while we subscribe your line.",
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
+                        formData.service = "data"; // Add service type for backend
+
+                        $.ajax({
+                            url: "/process-service", // Replace with your actual endpoint
+                            method: "POST",
+                            data: formData,
+                            success: function (response) {
+                                /* ... success handling ... */
+                                if (response && response.status === "success") {
+                                    Swal.fire({
+                                        title: "Success!",
+                                        text: response.message || "...",
+                                        icon: "success",
+                                    });
+                                    if (
+                                        response.new_balance !== undefined &&
+                                        $("#userBalance").length
+                                    ) {
+                                        $("#userBalance").text(
+                                            `₦${Number(
+                                                response.new_balance
+                                            ).toLocaleString()}`
+                                        );
+                                    }
+                                    closeServiceModal();
+                                } else {
+                                    Swal.fire({
+                                        title: "Failed!",
+                                        text: response.message || "...",
+                                        icon: "error",
+                                    });
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                /* ... error handling ... */
+                                console.error(
+                                    "AJAX Error:",
+                                    status,
+                                    error,
+                                    xhr.responseText
+                                );
+                                let errorMessage =
+                                    "Something went wrong. Please try again.";
+                                if (
+                                    xhr.responseJSON &&
+                                    xhr.responseJSON.message
+                                ) {
+                                    errorMessage = xhr.responseJSON.message;
+                                } else if (xhr.responseText) {
+                                    errorMessage =
+                                        "Error: " +
+                                        xhr.responseText.substring(0, 100) +
+                                        "...";
+                                }
+                                Swal.fire({
+                                    title: "Error!",
+                                    text: errorMessage,
+                                    icon: "error",
+                                });
+                            },
+                        });
+                    }
+                });
+
                 break;
 
             case "cable":
+                // ... (Data collection, validation, and AJAX structure similar to Airtime/Data)
                 formData.provider = $("#modalContent")
                     .find("select")
                     .eq(0)
                     .val();
                 formData.smartCard = $("#modalContent")
                     .find('input[type="text"]')
-                    .val();
+                    .eq(0)
+                    .val(); // Correct index for first text input
                 formData.package = $("#modalContent")
                     .find("select")
                     .eq(1)
                     .val();
-
-                // Validate form data
                 if (
                     !formData.provider ||
                     !formData.smartCard ||
                     !formData.package
                 ) {
-                    alert("Please fill all fields.");
+                    $.elegantToastr.error(
+                        "Warning!",
+                        "Please fill all inputs..."
+                    );
                     return;
                 }
-
-                // Proceed with cable TV subscription logic
-                alert("Processing Cable TV Subscription...");
+                // Add amount validation and balance check here if needed
+                // alert("Processing Cable TV Subscription...\n" + JSON.stringify(formData)); // Replace with actual AJAX
+                // Implement SweetAlert confirmation and AJAX call
                 break;
 
             case "electricity":
+                // ... (Data collection, validation, and AJAX structure similar to Airtime/Data)
                 formData.company = $("#modalContent")
                     .find("select")
                     .eq(0)
@@ -453,101 +736,110 @@ $(document).ready(function () {
                     .val();
                 formData.meterNumber = $("#modalContent")
                     .find('input[type="text"]')
-                    .val();
+                    .eq(0)
+                    .val(); // Correct index
                 formData.amount = $("#modalContent")
                     .find('input[type="number"]')
                     .val();
-
-                // Validate form data
                 if (
                     !formData.company ||
                     !formData.meterType ||
                     !formData.meterNumber ||
-                    !formData.amount
+                    !formData.amount ||
+                    parseFloat(formData.amount) <= 0
                 ) {
-                    alert("Please fill all fields.");
+                    $.elegantToastr.error(
+                        "Warning!",
+                        "Please fill all inputs and provide a valid amount..."
+                    );
                     return;
                 }
-
-                // Proceed with electricity payment logic
-                alert("Processing Electricity Bill Payment...");
+                // Add balance check here
+                // alert("Processing Electricity Bill Payment...\n" + JSON.stringify(formData)); // Replace with actual AJAX
+                // Implement SweetAlert confirmation and AJAX call
                 break;
 
             case "internet":
+                // ... (Data collection, validation, and AJAX structure similar to Airtime/Data)
                 formData.provider = $("#modalContent")
                     .find("select")
                     .eq(0)
                     .val();
                 formData.customerId = $("#modalContent")
                     .find('input[type="text"]')
-                    .val();
+                    .eq(0)
+                    .val(); // Correct index
                 formData.plan = $("#modalContent").find("select").eq(1).val();
-
-                // Validate form data
                 if (
                     !formData.provider ||
                     !formData.customerId ||
                     !formData.plan
                 ) {
-                    alert("Please fill all fields.");
+                    $.elegantToastr.error(
+                        "Warning!",
+                        "Please fill all inputs..."
+                    );
                     return;
                 }
-
-                // Proceed with internet subscription logic
-                alert("Processing Internet Subscription...");
+                // Add amount validation and balance check here
+                // alert("Processing Internet Subscription...\n" + JSON.stringify(formData)); // Replace with actual AJAX
+                // Implement SweetAlert confirmation and AJAX call
                 break;
 
             case "bills":
+                // ... (Data collection, validation, and AJAX structure similar to Airtime/Data)
                 formData.billType = $("#modalContent")
                     .find("select")
                     .eq(0)
                     .val();
                 formData.biller = $("#modalContent")
                     .find('input[type="text"]')
-                    .val();
+                    .eq(0)
+                    .val(); // Correct index
                 formData.customerId = $("#modalContent")
                     .find('input[type="text"]')
                     .eq(1)
-                    .val();
+                    .val(); // Correct index
                 formData.reference = $("#modalContent")
                     .find('input[type="text"]')
                     .eq(2)
-                    .val();
+                    .val(); // Correct index
                 formData.amount = $("#modalContent")
                     .find('input[type="number"]')
                     .val();
-
-                // Validate form data
                 if (
                     !formData.billType ||
                     !formData.biller ||
                     !formData.customerId ||
                     !formData.reference ||
-                    !formData.amount
+                    !formData.amount ||
+                    parseFloat(formData.amount) <= 0
                 ) {
-                    alert("Please fill all fields.");
+                    $.elegantToastr.error(
+                        "Warning!",
+                        "Please fill all inputs and provide a valid amount..."
+                    );
                     return;
                 }
-
-                // Proceed with bill payment logic
-                alert("Processing Bill Payment...");
+                // Add balance check here
+                // alert("Processing Bill Payment...\n" + JSON.stringify(formData)); // Replace with actual AJAX
+                // Implement SweetAlert confirmation and AJAX call
                 break;
 
             default:
-                alert("Service not supported.");
+                $.elegantToastr.error("Error!", "Service not supported.");
                 break;
         }
     }
 
     // Event listener for proceed button
-    // Currently shows a simple alert; can be extended for form submission
     $("#proceedServiceModalBtn").on("click", function () {
         // Validate form inputs based on the selected service
         if (currentService) {
             // Call the function based on the service type
             processServiceForm(currentService);
         } else {
-            alert("No service selected.");
+            $.elegantToastr.error("Error!", "No service selected.");
         }
     });
-});
+}); // End of document ready

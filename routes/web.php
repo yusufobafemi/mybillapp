@@ -109,3 +109,8 @@ Route::post('/webhook', function (Request $request) {
 });
 
 Route::post('/process-service', [ServiceController::class, 'processService'])->middleware('auth');
+
+Route::post('/get-data-info', [ServiceController::class, 'getDataPlans'])->middleware('auth');
+
+
+
