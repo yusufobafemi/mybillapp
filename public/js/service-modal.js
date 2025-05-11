@@ -585,6 +585,11 @@ $(document).ready(function () {
                     .eq(1)
                     .find("option:selected")
                     .data('itemcode');
+                const selectedDataName = $("#modalContent")
+                    .find("select")
+                    .eq(1)
+                    .find("option:selected")
+                    .data('dataplan');
                 formData.biller_code = selectedBillerCode;
                 formData.item_code = selectedItemCode;
                 const balanceTextData = $("#userBalance").text();
@@ -628,7 +633,7 @@ $(document).ready(function () {
                             },
                         });
                         formData.service = "data"; // Add service type for backend
-                        formData.planname = selectedPlanText; // Add service type for backend
+                        formData.planname = selectedDataName; // Add service type for backend
 
                         $.ajax({
                             url: "/process-service", // Replace with your actual endpoint
