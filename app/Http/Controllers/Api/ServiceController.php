@@ -210,7 +210,7 @@ class ServiceController extends Controller
             // *** USE THE CORRECT, STANDARD BILLS ENDPOINT ***
             // The endpoint for purchasing bills, including data bundles,
             // is typically /v3/bills. The specific item details go IN THE PAYLOAD.
-            $flutterwaveUrl = "https://api.flutterwave.com/v3/bills";
+            $flutterwaveUrl = "https://api.flutterwave.com/v3/country/NG/billers/'.$billerCode.'/items/'.$itemCode.'/payment";
 
             // Prepare the payload for the /v3/bills endpoint for DATA_BUNDLE
             $payload = [
@@ -221,8 +221,6 @@ class ServiceController extends Controller
                 'recurrence' => 'ONCE',         // Usually ONCE for a single purchase
                 'type' => 'DATA_BUNDLE',        // Specify the bill type
                 'reference' => $txRef,          // Your unique transaction reference
-                'biller_code' => $billerCode,   // Biller code IN THE BODY
-                'item_code' => $itemCode,       // Item code IN THE BODY
                 'customer_email' => $user->email, // Get email from authenticated user
             ];
 
