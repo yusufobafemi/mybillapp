@@ -162,103 +162,154 @@ class ServiceController extends Controller
 
     private function processData(Request $request)
     {
-        $user = auth('web')->user();
+        // 1. Authenticate User
+        $user = auth('web')->user(); // Using auth('web')->user() as in the first snippet
 
         if (!$user) {
+            Log::warning('Unauthenticated attempt to process data purchase.');
             return response()->json(['error' => 'Unauthenticated.'], 401);
         }
 
-        $txRef = 'TXN_' . $user->id . time();
+        // Generate Transaction Reference BEFORE validation/processing
+        $txRef = 'TXN_' . $user->id . '_' . time(); // Include user ID for better traceability
 
-        // Validate request - Ensure all needed fields are present
-        // Amount is CRUCIAL for the /v3/bills endpoint payload
+        // 2. Validate Request
         $validatedData = $request->validate([
             'biller_code' => 'required|string', // e.g., BIL110 (MTN NG)
             'item_code' => 'required|string',   // e.g., MD136 (1GB daily)
             'phoneNumber' => 'required|string', // Customer phone number (e.g., 08012345678)
-            'amount' => 'required|numeric|min:0', // The exact 'fee' of the data plan item (must be numeric > 0)
+            'amount' => 'required|numeric|min:0.01', // The exact 'fee' of the data plan item (must be numeric > 0) - Changed min to 0.01 as amount cannot be 0.
             'shortplan' => 'required|string',   // Description for your transaction record (e.g., "MTN 1GB Daily")
-            'planname' => 'required|string',
+            'planname' => 'required|string',    // Full plan name (e.g., "MTN 1GB Daily Bundle")
         ]);
 
         // Use validated data
         $billerCode = $validatedData['biller_code'];
         $itemCode = $validatedData['item_code'];
         $phoneNumber = $validatedData['phoneNumber'];
-        $amount = $validatedData['amount'];
+        $amount = (float) $validatedData['amount']; // Cast to float to ensure numeric comparison
         $shortplan = $validatedData['shortplan'];
         $planname = $validatedData['planname'];
 
-        // Important: Check if user has enough balance BEFORE calling the API
+        // 3. Check User Balance
         if ($user->balance < $amount) {
+            Log::warning('Insufficient balance for data purchase', [
+                'user_id' => $user->id,
+                'requested_amount' => $amount,
+                'current_balance' => $user->balance,
+                'tx_ref' => $txRef,
+            ]);
             return response()->json(['error' => 'Insufficient balance.'], 400);
         }
 
-        // Debit the user's balance *before* calling the external API.
-        // This is a common pattern to prevent double-spending issues.
-        // If the API call fails, you reverse the debit.
+        // 4. Debit User Balance *Before* Calling External API
+        // This is a critical step to prevent double-spending.
+        // If the API call fails for any reason *after* this point, you must have a process
+        // to reverse the debit (refund) or reconcile it manually.
         $user->decrement('balance', $amount);
         Log::info('User balance debited for Data Purchase attempt', [
             'user_id' => $user->id,
             'amount_debited' => $amount,
             'tx_ref' => $txRef,
-            'new_balance' => $user->fresh()->balance,
+            'old_balance' => $user->balance + $amount, // Log old balance
+            'new_balance' => $user->fresh()->balance, // Log new balance after decrement
+            'plan' => $shortplan,
+            'phone' => $phoneNumber,
         ]);
 
 
         try {
-            // *** USE THE CORRECT, STANDARD BILLS ENDPOINT ***
-            // The endpoint for purchasing bills, including data bundles,
-            // is typically /v3/bills. The specific item details go IN THE PAYLOAD.
-            $flutterwaveUrl = "https://api.flutterwave.com/v3/country/NG/billers/'.$billerCode.'/items/'.$itemCode.'/payment";
+            // 5. Prepare and Make Flutterwave API Call (using the working endpoint)
 
-            // Prepare the payload for the /v3/bills endpoint for DATA_BUNDLE
+            // Get Flutterwave Secret Key and Callback URL from environment
+            $secretKey = env('FLW_SECRET_KEY');
+            // Provide a fallback URL for the callback if env is not set
+            $callbackUrl = env('FLW_CALLBACK_URL', url('/api/flutterwave/callback')); // Define a default callback URL
+
+            if (empty($secretKey)) {
+                // This is a critical configuration error
+                Log::error('Flutterwave Secret Key not set in environment. Cannot proceed with API call.', ['tx_ref' => $txRef, 'user_id' => $user->id]);
+                // Reversing debit as API call cannot be made
+                $user->increment('balance', $amount);
+                Log::info('User balance refunded due to missing FLW_SECRET_KEY', ['user_id' => $user->id, 'amount_refunded' => $amount, 'tx_ref' => $txRef, 'new_balance' => $user->fresh()->balance]);
+
+                // Store failed transaction
+                \App\Models\Transaction::create([
+                    'user_id' => $user->id,
+                    'transaction_type_id' => 3, // Assuming 3 is for data purchase
+                    'amount' => $amount,
+                    'status' => 'failed', // Mark as failed
+                    'reference' => $txRef,
+                    'description' => $shortplan . ' - ' . $phoneNumber . ' (Config Error)',
+                    'response_data' => ['error' => 'Flutterwave Secret Key Missing'],
+                ]);
+
+
+                return response()->json([
+                    'status' => 'failed',
+                    'message' => 'Server configuration error preventing data purchase. Please contact support.',
+                ], 500);
+            }
+
+
+            // Construct the Flutterwave API endpoint URL based on the working snippet
+            // This endpoint requires biller_code and item_code in the URL path
+            $flutterwaveUrl = "https://api.flutterwave.com/v3/billers/{$billerCode}/items/{$itemCode}/payment";
+
+            // Prepare the payload for the API request (using the working snippet's structure)
             $payload = [
-                'country' => 'NG',              // Required for /v3/bills
-                'customer' => $phoneNumber,     // Customer identifier (phone number for data)
-                'amount' => $amount,  
-                'name'  =>  $planname,      // The price/fee of the item - REQUIRED FOR /v3/bills
-                'recurrence' => 'ONCE',         // Usually ONCE for a single purchase
-                'type' => 'DATA_BUNDLE',        // Specify the bill type
-                'reference' => $txRef,          // Your unique transaction reference
-                'customer_email' => $user->email, // Get email from authenticated user
+                "country"     => "NG", // Assuming Nigerian data bundles
+                "customer_id" => $phoneNumber, // The phone number receiving the data
+                "amount"      => $amount, // The price of the bundle (validated amount)
+                "reference"   => $txRef, // Your unique transaction reference
+                "callback_url" => $callbackUrl, // URL Flutterwave will call back for status updates
+                "customer_email" => $user->email ?? null, // Optional: from authenticated user
+                "customer_name" => $user->name ?? null,   // Optional: from authenticated user if available
+                // The working endpoint /v3/billers/{billerCode}/items/{itemCode}/payment
+                // does NOT typically require 'name', 'recurrence', 'type' like the generic /v3/bills endpoint.
+                // Sticking to the parameters that worked in snippet 2 and are listed in docs for this endpoint.
             ];
 
-            // Log the details *before* making the request
-            Log::info('Attempting Flutterwave Data Purchase (/v3/bills endpoint):', [
-                'url' => $flutterwaveUrl, // Should now log the correct /v3/bills URL
+            // Log the request details before sending
+            Log::info('Attempting Flutterwave Data Purchase (Specific Item Endpoint):', [
+                'url' => $flutterwaveUrl,
                 'payload' => $payload,
                 'user_id' => $user->id,
                 'tx_ref' => $txRef,
+                // Be cautious logging full secret keys in production logs
+                // 'auth_header' => 'Bearer ' . substr($secretKey, 0, 5) . '...',
             ]);
 
-            // Make the POST request to the generic bills endpoint
-            $response = Http::withToken(env('FLW_SECRET_KEY'))
+            // Make the HTTP POST request to Flutterwave
+            // Using withToken is equivalent to withHeaders(['Authorization' => 'Bearer ...'])
+            $response = Http::withToken($secretKey)
                 ->acceptJson() // Ensure Accept: application/json header
-                ->post($flutterwaveUrl, $payload); // POSTing to /v3/bills
+                ->post($flutterwaveUrl, $payload);
 
-            // Log the raw response for debugging
+            // Log the raw response details immediately after receiving
             $statusCode = $response->status();
             $rawBody = $response->body(); // Get the raw string body
-            $data = $response->json(); // Attempt to parse JSON
+            $result = $response->json(); // Attempt to parse JSON
 
-            Log::info('Flutterwave Data Purchase Raw Response (/v3/bills endpoint):', [
-                'status_code' => $statusCode,
-                'successful' => $response->successful(), // Check if HTTP status is 2xx
-                'raw_body' => $rawBody,
-                'parsed_json' => $data, // This will be null if rawBody isn't valid JSON
+            Log::info('Received Flutterwave Data Purchase Raw Response (Specific Item Endpoint):', [
                 'tx_ref' => $txRef,
+                'http_status' => $statusCode, // Log the HTTP status code
+                'successful_http' => $response->successful(), // Check if HTTP status is 2xx
+                'raw_body' => $rawBody, // Log the raw response body string
+                'parsed_json' => $result, // Log the parsed array (null if not JSON)
             ]);
 
-            // *** CHECK THE RESPONSE STATUS AND DATA ***
+
+            // 6. Process Flutterwave Response
+
             // Check if the HTTP call was successful (2xx status)
             if ($response->successful()) {
-                // Now check the JSON payload status provided by Flutterwave
-                if (isset($data['status']) && $data['status'] === 'success') {
+                // HTTP call successful, now check the JSON payload status from Flutterwave
+                if (isset($result['status']) && $result['status'] === 'success') {
 
-                    // Transaction is successful! Balance was already debited.
+                    // Transaction is successful according to Flutterwave API status!
+                    // Balance was already debited. Record the successful transaction.
 
-                    // Store successful transaction
                     $transaction = \App\Models\Transaction::create([
                         'user_id' => $user->id,
                         'transaction_type_id' => 3, // Assuming 3 is for data purchase
@@ -266,38 +317,43 @@ class ServiceController extends Controller
                         'status' => 'successful',
                         'reference' => $txRef,
                         'description' => $shortplan . ' - ' . $phoneNumber,
-                        'response_data' => $data, // Store the full FW response
-                        // You could parse out data['data']['id'], data['data']['currency'] etc. here if your table has columns for them.
-                        // E.g., 'fw_transaction_id' => $data['data']['id'] ?? null,
-                        // 'currency' => $data['data']['currency'] ?? null,
+                        'response_data' => $result, // Store the full FW response
+                        'fw_transaction_id' => $result['data']['id'] ?? null, // Capture FW's internal transaction ID if available
+                        'currency' => $result['data']['currency'] ?? null, // Capture currency if available
                     ]);
 
                     Log::info('Data Purchase Successful (FW status success):', [
                         'tx_ref' => $txRef,
                         'transaction_id' => $transaction->id,
+                        'user_id' => $user->id,
                         'new_balance' => $user->fresh()->balance,
-                        'flutterwave_response_id' => $data['data']['id'] ?? 'N/A', // Log the FW transaction ID
+                        'flutterwave_response_id' => $result['data']['id'] ?? 'N/A', // Log the FW transaction ID
                     ]);
 
                     return response()->json([
                         'status' => 'success',
                         'message' => 'Data bundle purchased successfully!',
-                        'transaction' => $transaction,
+                        'transaction_ref' => $txRef, // Return your reference
+                        'flutterwave_response_ref' => $result['data']['reference'] ?? 'N/A', // Return FW's reference (might be same as yours)
                         'new_balance' => $user->fresh()->balance,
-                        'flutterwave_response' => $data, // Optionally return FW response details
+                        // Optionally include more FW details if needed by the frontend:
+                        // 'flutterwave_data' => $result['data'] ?? null,
                     ]);
                 } else {
-                    // HTTP call was 2xx, but Flutterwave's API status was 'failed' or something else
-                    // In this case, the user's balance was debited, so we might need to reverse it
-                    // depending on your system's design for soft failures vs hard failures.
-                    // A simple approach is to mark as failed and manually check/refund if needed,
-                    // or implement a refund mechanism here. For now, let's just log and mark as failed.
+                    // HTTP call was 2xx, but Flutterwave's API status was not 'success'
+                    // This is a business logic failure on Flutterwave's side after they accepted the request.
+                    // The user's balance was debited. You NEED to decide if you auto-refund here.
+                    // Auto-refunding immediately is simplest but might be risky if FW's status is delayed.
+                    // A robust system might mark as 'pending_manual_review' and refund later.
+                    // For demonstration, let's log and indicate failure. Auto-refund is commented out.
 
                     Log::error('Data Purchase Failed (FW JSON Status Not Success):', [
                         'tx_ref' => $txRef,
+                        'user_id' => $user->id,
                         'response_status_code' => $statusCode,
-                        'response_body' => $rawBody, // Log raw body for inspection
-                        'parsed_json' => $data,
+                        'raw_body' => $rawBody, // Log raw body for inspection
+                        'parsed_json' => $result,
+                        'payload' => $payload, // Log the payload sent
                     ]);
 
                     // Store failed transaction
@@ -308,13 +364,14 @@ class ServiceController extends Controller
                         'status' => 'failed', // Mark as failed
                         'reference' => $txRef,
                         'description' => $shortplan . ' - ' . $phoneNumber . ' (FW Status Fail)',
-                        'response_data' => $data ?? ['status_code' => $statusCode, 'body' => $rawBody], // Store error details
+                        'response_data' => $result ?? ['status_code' => $statusCode, 'body' => $rawBody], // Store error details
+                        'fw_transaction_id' => $result['data']['id'] ?? null, // Capture FW's internal transaction ID if available
                     ]);
 
                     // Construct user-friendly error message from Flutterwave's response
                     $fwErrorMessage = 'Data purchase failed. Please try again.';
-                    if ($data && is_array($data) && isset($data['message'])) {
-                        $fwErrorMessage = 'Data purchase failed: ' . $data['message'];
+                    if ($result && is_array($result) && isset($result['message'])) {
+                        $fwErrorMessage = 'Data purchase failed: ' . $result['message'];
                     } elseif (!empty($rawBody)) {
                         // Attempt to extract message from raw body if JSON parsing failed or no 'message' key
                         $rawErrorMessage = json_decode($rawBody, true);
@@ -322,29 +379,45 @@ class ServiceController extends Controller
                             $fwErrorMessage = 'Data purchase failed: ' . $rawErrorMessage['message'];
                         } else {
                             // Fallback to showing a snippet of the raw body
-                            $fwErrorMessage .= ' Response: ' . substr($rawBody, 0, 150) . '...';
+                            if (strlen($rawBody) > 0) {
+                                $fwErrorMessage .= ' Response snippet: ' . substr($rawBody, 0, 150) . '...';
+                            }
                         }
                     }
 
-                    // Consider refunding the user's balance if the Flutterwave call indicates a non-recoverable failure
-                    // or if your business logic dictates it. This is a critical decision point.
-                    // Example: $user->increment('balance', $amount); // Uncomment this line if you want to auto-refund on FW non-success status
+                    // CONSIDER REFUNDING HERE IF THE FAILURE IS DEFINITIVE (e.g., invalid parameters according to FW)
+                    // $user->increment('balance', $amount);
+                    // Log::info('User balance refunded due to FW non-success status', ['user_id' => $user->id, 'amount_refunded' => $amount, 'tx_ref' => $txRef, 'new_balance' => $user->fresh()->balance]);
+
 
                     return response()->json([
                         'status' => 'failed',
                         'message' => $fwErrorMessage,
-                        'transaction' => $transaction,
-                        'flutterwave_response' => $data,
-                    ], 400); // Use 400 as it's a business logic failure, not usually a server error on your end
+                        'transaction_ref' => $txRef,
+                        // Optionally return FW response details for debugging/info on frontend:
+                        // 'flutterwave_response' => $result,
+                    ], 400); // Use 400 as it's a business logic failure from FW, not usually a server error on your end (unless it's a 5xx from FW)
 
                 }
             } else {
-                // HTTP call itself failed (e.g., 400, 500 from FW, network error before getting 2xx)
+                // 7. Handle HTTP Call Failure (e.g., network error, 4xx, 5xx from FW)
+                // The user's balance was already debited. You MUST have a process
+                // to handle potential refunds/reversals for transactions that fail
+                // at this stage (HTTP error after debit but before confirmation).
+                // Consider auto-refunding here, or rely on reconciliation/manual check.
+
+                $errorMessage = 'Failed to communicate with payment provider.';
+                $httpErrorCode = $statusCode;
+                $exceptionMessage = $response->toException()->getMessage();
+
+
                 Log::error('Data Purchase Failed (HTTP Error from Flutterwave):', [
                     'tx_ref' => $txRef,
-                    'response_status_code' => $statusCode,
+                    'user_id' => $user->id,
+                    'response_status_code' => $httpErrorCode,
                     'response_body' => $rawBody,
-                    'exception' => $response->toException()->getMessage(), // Capture the HTTP exception message
+                    'exception' => $exceptionMessage, // Capture the HTTP exception message
+                    'payload' => $payload, // Log the payload sent
                 ]);
 
                 // Store failed transaction
@@ -355,54 +428,67 @@ class ServiceController extends Controller
                     'status' => 'failed',
                     'reference' => $txRef,
                     'description' => $shortplan . ' - ' . $phoneNumber . ' (HTTP Fail)',
-                    'response_data' => ['status_code' => $statusCode, 'body' => $rawBody, 'exception_message' => $response->toException()->getMessage()],
+                    'response_data' => ['status_code' => $httpErrorCode, 'body' => $rawBody, 'exception_message' => $exceptionMessage],
                 ]);
 
-                // The user's balance was already debited. You MUST have a process
-                // to handle potential refunds/reversals for transactions that fail
-                // at this stage (HTTP error after debit but before FW success confirmation).
-                // Consider auto-refunding here, or rely on reconciliation/manual check.
-                // Example: $user->increment('balance', $amount); // Uncomment this line if you want to auto-refund on HTTP errors
+                // CONSIDER REFUNDING HERE IF THE HTTP ERROR IS LIKELY TRANSIENT OR A CLEAR FAILURE
+                // $user->increment('balance', $amount);
+                // Log::info('User balance refunded due to HTTP error from FW', ['user_id' => $user->id, 'amount_refunded' => $amount, 'tx_ref' => $txRef, 'new_balance' => $user->fresh()->balance]);
+
 
                 return response()->json([
                     'status' => 'failed',
-                    'message' => 'Failed to communicate with payment provider. Please try again.',
-                    'transaction' => $transaction,
-                ], $statusCode >= 400 ? $statusCode : 500); // Use FW status code if it's a client/server error
+                    'message' => $errorMessage . ($httpErrorCode > 0 ? " Status: {$httpErrorCode}" : "") . ". Please try again.",
+                    'transaction_ref' => $txRef,
+                ], $httpErrorCode >= 400 ? $httpErrorCode : 502); // Use FW status code if it's a client/server error, default to 502 (Bad Gateway) for unexpected HTTP issues
             }
         } catch (\Exception $e) {
-            // Catch any unexpected exceptions during the process (e.g., network issues *before* getting a response, coding errors)
-            Log::error('Error during Data Purchase Process (Exception Caught):', [
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'tx_ref' => $txRef ?? 'N/A',
-                'request_data' => $request->all(),
-            ]);
+            // 8. Catch any unexpected exceptions during the process (e.g., network issues *before* getting a response, coding errors)
 
             // The user's balance was already debited. You MUST handle the refund/reversal
             // for exceptions occurring after the debit but before confirmation.
-            // Example: $user->increment('balance', $amount); // Uncomment this line if you want to auto-refund on Exceptions
+
+            $errorMessage = 'An internal error occurred while processing your request.';
+
+            Log::error('Error during Data Purchase Process (Exception Caught):', [
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(), // Log the full trace for debugging
+                'tx_ref' => $txRef, // Use the generated reference if available
+                'user_id' => $user->id, // Use the user ID if available
+                'request_data' => $request->all(), // Log the request data
+                'payload_attempted' => $payload ?? 'N/A', // Log the payload if it was prepared
+                'url_attempted' => $flutterwaveUrl ?? 'N/A', // Log the URL if it was prepared
+            ]);
+
+            // CONSIDER REFUNDING HERE IF AN EXCEPTION OCCURRED AFTER DEBIT
+            // $user->increment('balance', $amount);
+            // Log::info('User balance refunded due to system exception', ['user_id' => $user->id, 'amount_refunded' => $amount, 'tx_ref' => $txRef, 'new_balance' => $user->fresh()->balance]);
 
 
-            // Store failed transaction due to exception
+            // Attempt to record a failed transaction due to the exception
             try {
                 \App\Models\Transaction::create([
-                    'user_id' => $user ? $user->id : null,
+                    'user_id' => $user ? $user->id : null, // Ensure user ID is saved if available
                     'transaction_type_id' => 3,
-                    'amount' => $amount ?? $request->input('amount') ?? 0,
+                    'amount' => $amount ?? $request->input('amount') ?? 0, // Try to get amount if variable wasn't set before exception
                     'status' => 'failed',
-                    'reference' => $txRef ?? 'EXCEPTION_' . time(),
+                    'reference' => $txRef ?? 'EXCEPTION_' . time(), // Use txRef if available, else generate a new one
                     'description' => ($shortplan ?? 'Data') . ' - ' . ($phoneNumber ?? 'N/A') . ' (System Exception)',
-                    'response_data' => ['error' => $e->getMessage(), 'trace' => substr($e->getTraceAsString(), 0, 500)],
+                    'response_data' => ['error' => $e->getMessage(), 'trace' => substr($e->getTraceAsString(), 0, 500)], // Store error details, limit trace length
                 ]);
             } catch (\Exception $te) {
-                Log::error('Failed to record transaction for caught exception during Data purchase', ['exception' => $te->getMessage()]);
+                Log::error('Failed to record transaction for caught exception during Data purchase', [
+                    'main_exception' => $e->getMessage(),
+                    'transaction_creation_exception' => $te->getMessage(),
+                    'tx_ref' => $txRef ?? 'N/A',
+                ]);
             }
 
 
             return response()->json([
                 'status' => 'failed',
-                'message' => 'An internal error occurred. Please try again later.',
+                'message' => $errorMessage . (config('app.debug') ? ' Debug: ' . $e->getMessage() : ''), // Show debug info only in debug mode
+                'transaction_ref' => $txRef ?? 'N/A',
             ], 500);
         }
     }
