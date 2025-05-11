@@ -66,7 +66,7 @@ Route::get('/logout', function () {
 
 // Route::middleware('cors')->get('/your-api-endpoint', 'YourController@yourMethod');
 
-Auth::routes(['login' => false]);
+Auth::routes(['login' => false, 'logout' => false]);
 
 Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->middleware('auth')->name('dashboard');
 
