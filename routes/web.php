@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\TestController;
 
 
 /*
@@ -111,3 +112,5 @@ Route::post('/webhook', function (Request $request) {
 Route::post('/process-service', [ServiceController::class, 'processService'])->middleware('auth');
 
 Route::post('/get-data-info', [ServiceController::class, 'getDataPlans'])->middleware('auth');
+
+Route::get('/test-data-purchase', [TestController::class, 'processData']);
