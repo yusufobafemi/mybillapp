@@ -628,6 +628,7 @@ $(document).ready(function () {
                             },
                         });
                         formData.service = "data"; // Add service type for backend
+                        formData.planname = selectedPlanText; // Add service type for backend
 
                         $.ajax({
                             url: "/process-service", // Replace with your actual endpoint
