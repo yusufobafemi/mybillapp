@@ -224,7 +224,6 @@ $(document).ready(function () {
 
         // Initialize form interactions ONLY AFTER content is loaded
         setupFormInteractions();
-        console.log(currentService);
     }
 
     // Sets up dynamic form interactions based on the current service
@@ -280,7 +279,7 @@ $(document).ready(function () {
                                             .val(item.item_code)
                                             .text(item.name + ' - ₦' + item.amount)
                                             // Keep data attributes if needed later
-                                            .attr('data-billercode', selectedNetwork) // Or item.billercode if available
+                                            .attr('data-billercode', item.biller_code) // Or item.billercode if available
                                             .attr('data-itemcode', item.item_code)
                                             .attr('data-dataplan', item.name)
                                     );
