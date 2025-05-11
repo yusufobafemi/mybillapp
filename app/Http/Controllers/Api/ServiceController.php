@@ -163,41 +163,47 @@ class ServiceController extends Controller
     private function processData(Request $request)
     {
         $user = auth('web')->user();
-
+    
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated.'], 401);
         }
-
+    
         $txRef = 'TXN_' . $user->id . time();
-
+    
         // Validate request
-        $validatedData = $request->validate([ // Store validated data for easier access
+        $validatedData = $request->validate([
             'biller_code' => 'required|string',
             'item_code' => 'required|string',
             'phoneNumber' => 'required|string',
             'amount' => 'required|numeric',
             'shortplan' => 'required|string',
         ]);
-
+    
         // Use validated data
         $billerCode = $validatedData['biller_code'];
         $itemCode = $validatedData['item_code'];
         $phoneNumber = $validatedData['phoneNumber'];
         $amount = $validatedData['amount'];
         $shortplan = $validatedData['shortplan'];
-
+    
         if ($user->balance < $amount) {
             return response()->json(['error' => 'Insufficient balance.'], 400);
         }
-
+    
         try {
-            $flutterwaveUrl = "https://api.flutterwave.com/v3/country/NG/billers/{$billerCode}/items/{$itemCode}/payment";
+            // Use the correct Flutterwave bills endpoint
+            $flutterwaveUrl = "https://api.flutterwave.com/v3/bills";
             $payload = [
+                'country' => 'NG',
                 'customer' => $phoneNumber,
-                'reference' => $txRef,
                 'amount' => $amount,
+                'recurrence' => 'ONCE',
+                'type' => 'DATA_BUNDLE', // Specify the type as DATA_BUNDLE
+                'reference' => $txRef,
+                'biller_code' => $billerCode, // Include biller code
+                'item_code' => $itemCode,     // Include item code
             ];
-
+    
             // Log the details *before* making the request
             Log::info('Attempting Flutterwave Data Purchase:', [
                 'url' => $flutterwaveUrl,
@@ -205,160 +211,145 @@ class ServiceController extends Controller
                 'user_id' => $user->id,
                 'tx_ref' => $txRef,
             ]);
-
-
+    
             $response = Http::withToken(env('FLW_SECRET_KEY'))
                 ->post($flutterwaveUrl, $payload);
-
-            // --- NEW & IMPROVED LOGGING ---
+    
+            // Log the response
             $statusCode = $response->status();
-            $rawBody = $response->body(); // Get the raw response body as a string
-            $data = $response->json();   // Attempt to parse the JSON
-
+            $rawBody = $response->body();
+            $data = $response->json();
+    
             Log::info('Flutterwave Data Purchase Raw Response:', [
                 'status_code' => $statusCode,
-                'successful' => $response->successful(), // Check if status is 2xx
-                'raw_body' => $rawBody, // This is what you need to see
-                'parsed_json' => $data, // Will be null if parsing failed or body was empty/invalid
-                'tx_ref' => $txRef, // Keep reference for correlation
+                'successful' => $response->successful(),
+                'raw_body' => $rawBody,
+                'parsed_json' => $data,
+                'tx_ref' => $txRef,
             ]);
-            // --- END NEW LOGGING ---
-
-
-            // First, check if the HTTP call itself was successful (2xx status)
-            // If not, the JSON status check below might fail or be irrelevant.
+    
+            // Check if the HTTP call was successful (2xx status)
             if (!$response->successful()) {
                 Log::error('Flutterwave API call non-successful status:', [
                     'status_code' => $statusCode,
-                    'raw_body' => $rawBody, // Log raw body again in error case
+                    'raw_body' => $rawBody,
                     'tx_ref' => $txRef,
                 ]);
-
-                // Create a failed transaction immediately for non-successful API calls
+    
+                // Create a failed transaction
                 \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'transaction_type_id' => 3,
-                    'amount' => $amount, // Log the intended amount
+                    'amount' => $amount,
                     'status' => 'failed',
                     'reference' => $txRef,
                     'description' => $shortplan . '-' . $phoneNumber . ' (API Status Fail)',
-                    'response_data' => ['status_code' => $statusCode, 'body' => $rawBody], // Store raw response details
+                    'response_data' => ['status_code' => $statusCode, 'body' => $rawBody],
                 ]);
-
-                // Return a more informative error response
+    
                 $errorMessage = "Flutterwave API call failed with status code {$statusCode}.";
-                // Try to get a specific error message from the raw body if it's not JSON or parsing failed
                 if ($rawBody) {
-                    $errorMessage .= " Response: " . substr($rawBody, 0, 255); // Limit length for log/response
+                    $errorMessage .= " Response: " . substr($rawBody, 0, 255);
                 }
-
+    
                 return response()->json([
                     'status' => 'failed',
                     'message' => $errorMessage,
                     'tx_ref' => $txRef,
-                ], $statusCode >= 400 ? $statusCode : 500); // Use actual status if client/server error, otherwise 500
+                ], $statusCode >= 400 ? $statusCode : 500);
             }
-
-
-            // If the API call was successful (2xx), now check the *parsed JSON* status field
-            // Ensure $data is not null and is an array before accessing the 'status' key
+    
+            // Check the JSON status field
             if ($data && is_array($data) && isset($data['status']) && $data['status'] === 'success') {
                 // Deduct balance
                 $user->decrement('balance', $amount);
-
+    
                 // Store transaction
-                $transaction = \App\Models\Transaction::create([ // Use the alias
+                $transaction = \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'transaction_type_id' => 3, // 3 for data purchase
                     'amount' => $amount,
                     'status' => 'successful',
                     'reference' => $txRef,
                     'description' => $shortplan . '-' . $phoneNumber,
-                    'response_data' => $data, // Store the successful response data
+                    'response_data' => $data,
                 ]);
-
+    
                 Log::info('Data Purchase Successful (Flutterwave status success):', [
                     'tx_ref' => $txRef,
                     'transaction_id' => $transaction->id,
                     'new_balance' => $user->fresh()->balance,
-                    'flutterwave_response' => $data, // Log the full parsed success response
+                    'flutterwave_response' => $data,
                 ]);
-
-
+    
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Data bundle purchased successfully!',
                     'transaction' => $transaction,
                     'new_balance' => $user->fresh()->balance,
-                    'flutterwave_response' => $data, // Include FW response in success response
+                    'flutterwave_response' => $data,
                 ]);
             } else {
-                // The API call was successful (2xx) but the JSON status was not 'success'
+                // API call was successful but JSON status was not 'success'
                 Log::error('Data Purchase Failed (Flutterwave JSON Status Not Success):', [
                     'tx_ref' => $txRef,
                     'response_status' => $statusCode,
-                    'raw_body' => $rawBody, // Log raw body again in error path
-                    'parsed_json' => $data, // Log parsed data (this should contain FW error details if parsing worked)
+                    'raw_body' => $rawBody,
+                    'parsed_json' => $data,
                 ]);
-
+    
                 // Store failed transaction
-                $transaction = \App\Models\Transaction::create([ // Use the alias
+                $transaction = \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'transaction_type_id' => 3,
-                    'amount' => $amount, // Log intended amount
+                    'amount' => $amount,
                     'status' => 'failed',
                     'reference' => $txRef,
                     'description' => $shortplan . '-' . $phoneNumber . ' (FW Status Fail)',
-                    'response_data' => $data ?? ['raw_body' => $rawBody], // Store the parsed response data (contains error) or raw if parsing failed
+                    'response_data' => $data ?? ['raw_body' => $rawBody],
                 ]);
-
-                // Try to extract a meaningful error message from the FW response if available
+    
                 $fwErrorMessage = 'Data purchase failed. Please try again.';
                 if ($data && is_array($data) && isset($data['message'])) {
                     $fwErrorMessage = 'Data purchase failed: ' . $data['message'];
                 } elseif ($rawBody) {
-                    // Fallback to raw body if JSON message not found
-                    $fwErrorMessage .= " Response: " . substr($rawBody, 0, 255); // Limit length
+                    $fwErrorMessage .= " Response: " . substr($rawBody, 0, 255);
                 }
-
-
+    
                 return response()->json([
                     'status' => 'failed',
                     'message' => $fwErrorMessage,
                     'transaction' => $transaction,
-                    'flutterwave_response' => $data, // Include FW response in failure response
+                    'flutterwave_response' => $data,
                 ]);
             }
         } catch (\Exception $e) {
-            // This catch block handles exceptions like network errors, curl errors, etc.
             Log::error('Error during Data Purchase Process (Exception Caught):', [
                 'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(), // Use 'trace' instead of 'stack'
-                'tx_ref' => $txRef ?? 'N/A', // Log txRef if generated before exception
-                'request_data' => $request->all(), // Log incoming data
+                'trace' => $e->getTraceAsString(),
+                'tx_ref' => $txRef ?? 'N/A',
+                'request_data' => $request->all(),
             ]);
-
-            // Create a failed transaction for uncaught exceptions as a fallback
-            // (You might have a more sophisticated system where a transaction is created as 'pending' earlier)
+    
+            // Create a failed transaction
             try {
                 \App\Models\Transaction::create([
-                    'user_id' => $user ? $user->id : null, // user might be null in theory if error before auth
+                    'user_id' => $user ? $user->id : null,
                     'transaction_type_id' => 3,
-                    'amount' => $amount ?? $request->input('amount') ?? 0, // Use amount if set, otherwise try request
+                    'amount' => $amount ?? $request->input('amount') ?? 0,
                     'status' => 'failed',
-                    'reference' => $txRef ?? 'EXCEPTION_' . time(), // Generate ref if txRef wasn't set
+                    'reference' => $txRef ?? 'EXCEPTION_' . time(),
                     'description' => $shortplan . '-' . $phoneNumber . ' (System Exception)',
-                    'response_data' => ['error' => $e->getMessage(), 'trace' => substr($e->getTraceAsString(), 0, 500)], // Log exception details
+                    'response_data' => ['error' => $e->getMessage(), 'trace' => substr($e->getTraceAsString(), 0, 500)],
                 ]);
             } catch (\Exception $te) {
                 Log::error('Failed to record transaction for caught exception', ['exception' => $te->getMessage()]);
             }
-
-
+    
             return response()->json([
                 'status' => 'failed',
                 'message' => 'An internal error occurred. Please try again later.',
-            ], 500); // Use 500 for internal server errors
+            ], 500);
         }
     }
 }
