@@ -114,3 +114,7 @@ Route::post('/process-service', [ServiceController::class, 'processService'])->m
 Route::post('/get-data-info', [ServiceController::class, 'getDataPlans'])->middleware('auth');
 
 Route::get('/test-data-purchase', [TestController::class, 'processData']);
+
+Route::post('/get-cable-packages', [ServiceController::class, 'getCablePlans']);
+
+Route::post('/verify-meter', [ServiceController::class, 'verifyMeterNumber']);

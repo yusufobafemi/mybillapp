@@ -21,6 +21,8 @@ class ServiceController extends Controller
                 return $this->processAirtime($request);
             case 'data':
                 return $this->processData($request);
+            case 'cable':
+                return $this->processCable($request);
 
                 // Later add: data, cable, etc.
             default:
@@ -171,7 +173,7 @@ class ServiceController extends Controller
         }
 
         // Generate Transaction Reference BEFORE validation/processing
-        $txRef = 'TXN_' . $user->id . '_' . time(); // Include user ID for better traceability
+        $txRef = 'TXN_' . $user->id  . time(); // Include user ID for better traceability
 
         // 2. Validate Request
         $validatedData = $request->validate([
@@ -489,6 +491,264 @@ class ServiceController extends Controller
                 'status' => 'failed',
                 'message' => $errorMessage . (config('app.debug') ? ' Debug: ' . $e->getMessage() : ''), // Show debug info only in debug mode
                 'transaction_ref' => $txRef ?? 'N/A',
+            ], 500);
+        }
+    }
+
+    private function processCable(Request $request)
+    {
+        // Authenticate user
+        $user = auth('web')->user();
+        if (!$user) {
+            Log::warning('Unauthenticated attempt to process cable subscription.');
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+
+        // Generate transaction reference
+        $txRef = 'TXN_' . $user->id  . time();
+
+        // Validate request
+        $validatedData = $request->validate([
+            'smartCard' => 'required|string',
+            'provider' => 'required|string',
+            'package' => 'required|string',
+            'billerCode' => 'required|string',
+            'itemCode' => 'required|string',
+            'packageName' => 'required|string',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        // Extract validated data
+        $smartCard = $validatedData['smartCard'];
+        $provider = $validatedData['provider'];
+        $itemCode = $validatedData['itemCode'];
+        $billerCode = $validatedData['billerCode'];
+        $packageName = $validatedData['packageName'];
+        $amount = (float) $validatedData['amount'];
+
+        // Check balance
+        if ($user->balance < $amount) {
+            Log::warning('Insufficient balance for cable subscription', [
+                'user_id' => $user->id,
+                'requested_amount' => $amount,
+                'current_balance' => $user->balance,
+                'tx_ref' => $txRef,
+            ]);
+            return response()->json(['error' => 'Insufficient balance.'], 400);
+        }
+
+        try {
+            // Prepare Flutterwave API call
+            $secretKey = env('FLW_SECRET_KEY');
+            $callbackUrl = env('FLW_CALLBACK_URL', url('/api/flutterwave/callback'));
+            if (empty($secretKey)) {
+                Log::error('Flutterwave Secret Key not set.', ['tx_ref' => $txRef]);
+                return response()->json(['status' => 'failed', 'message' => 'Server configuration error.'], 500);
+            }
+
+            $flutterwaveUrl = "https://api.flutterwave.com/v3/billers/{$billerCode}/items/{$itemCode}/payment";
+            $payload = [
+                'country' => 'NG',
+                'customer_id' => $smartCard,
+                'amount' => $amount,
+                'reference' => $txRef,
+                'callback_url' => $callbackUrl,
+                'customer_email' => $user->email ?? null,
+                'customer_name' => $user->name ?? null,
+            ];
+
+            // Make API call
+            $response = Http::withToken($secretKey)->acceptJson()->post($flutterwaveUrl, $payload);
+            $result = $response->json();
+
+            Log::info('Flutterwave Cable Subscription Response:', [
+                'tx_ref' => $txRef,
+                'status_code' => $response->status(),
+                'response' => $result,
+            ]);
+
+            // Handle response
+            if ($response->successful() && isset($result['status']) && $result['status'] === 'success') {
+                // Deduct balance after success
+                $user->decrement('balance', $amount);
+
+                // Record transaction
+                \App\Models\Transaction::create([
+                    'user_id' => $user->id,
+                    'transaction_type_id' => 4, // Assuming 4 for cable
+                    'amount' => $amount,
+                    'status' => 'successful',
+                    'reference' => $txRef,
+                    'description' => "{$packageName} - {$smartCard}",
+                    'response_data' => $result,
+                    'fw_transaction_id' => $result['data']['id'] ?? null,
+                    'currency' => $result['data']['currency'] ?? null,
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Cable subscription successful!',
+                    'transaction_ref' => $txRef,
+                    'new_balance' => $user->fresh()->balance,
+                ]);
+            } else {
+                // Handle failure
+                $errorMessage = $result['message'] ?? 'Cable subscription failed.';
+                Log::error('Cable Subscription Failed:', [
+                    'tx_ref' => $txRef,
+                    'response' => $result,
+                ]);
+
+                \App\Models\Transaction::create([
+                    'user_id' => $user->id,
+                    'transaction_type_id' => 4,
+                    'amount' => $amount,
+                    'status' => 'failed',
+                    'reference' => $txRef,
+                    'description' => "{$packageName} - {$smartCard} (Failed)",
+                    'response_data' => $result,
+                ]);
+
+                return response()->json([
+                    'status' => 'failed',
+                    'message' => $errorMessage,
+                    'transaction_ref' => $txRef,
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error during Cable Subscription:', [
+                'tx_ref' => $txRef,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            \App\Models\Transaction::create([
+                'user_id' => $user->id,
+                'transaction_type_id' => 4,
+                'amount' => $amount,
+                'status' => 'failed',
+                'reference' => $txRef,
+                'description' => "{$packageName} - {$smartCard} (Exception)",
+                'response_data' => ['error' => $e->getMessage()],
+            ]);
+
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'An error occurred. Please try again.',
+                'transaction_ref' => $txRef,
+            ], 500);
+        }
+    }
+
+    /**
+     * Fetch cable TV subscription plans for a given biller code.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getCablePlans(Request $request)
+    {
+        // Validate the incoming request
+        $request->validate([
+            'billercode' => 'required|string',
+        ]);
+
+        // Extract biller code
+        $billerCode = $request->input('billercode');
+
+        try {
+            // Make API call to Flutterwave
+            $response = Http::withToken(env('FLW_SECRET_KEY'))
+                ->get("https://api.flutterwave.com/v3/billers/{$billerCode}/items");
+
+            // Log the request and response for debugging
+            Log::info('Flutterwave Cable Plans Request:', [
+                'biller_code' => $billerCode,
+                'endpoint' => "https://api.flutterwave.com/v3/billers/{$billerCode}/items",
+            ]);
+
+            // Check if the response is successful (HTTP 2xx)
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+
+                Log::info('Flutterwave Cable Plans Response:', [
+                    'biller_code' => $billerCode,
+                    'status' => 'success',
+                    'data_count' => count($data),
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Cable packages retrieved successfully',
+                    'data' => $data,
+                ]);
+            }
+
+            // Handle non-2xx HTTP responses
+            Log::error('Failed to fetch cable plans from Flutterwave:', [
+                'biller_code' => $billerCode,
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch cable packages from Flutterwave',
+                'data' => [],
+            ], $response->status());
+        } catch (\Exception $e) {
+            // Handle exceptions (e.g., network issues, invalid API key)
+            Log::error('Exception occurred while fetching cable plans:', [
+                'biller_code' => $billerCode,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    //verify meter number
+    public function verifyMeterNumber(Request $request)
+    {
+        $request->validate([
+            'biller_code' => 'required|string',
+            'meter_number' => 'required|string',
+            'meter_type' => 'required|string',
+        ]);
+
+        try {
+            $response = Http::withToken(env('FLUTTERWAVE_SECRET'))
+                ->post('https://api.flutterwave.com/v3/billers/validate', [
+                    'biller_code' => $request->biller_code,
+                    'customer' => $request->meter_number,
+                    'type' => $request->meter_type
+                ]);
+
+            $result = $response->json();
+
+            if ($result['status'] === 'success') {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'customer_name' => $result['data']['customer_name'],
+                        'meter_number' => $request->meter_number,
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'fail',
+                'message' => $result['message'] ?? 'Could not verify meter number'
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'fail',
+                'message' => 'Server error while verifying meter number.'
             ], 500);
         }
     }
