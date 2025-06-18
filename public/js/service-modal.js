@@ -855,7 +855,8 @@ $(document).ready(function () {
                         formData.service = "airtime";
                         formData.tx_ref = tx_ref;
                         FlutterwaveCheckout({
-                            public_key: "FLWPUBK_TEST-4680b6c537a7d0003ac847159f903391-X", // Your public key
+                            //FLWPUBK-6ecd4d6df722528e0cf41c5fad8552bb-X
+                            public_key: "FLWPUBK_TEST-3aff844cef3e5730b10d19d591adc641-X", // Your public key
                             tx_ref: formData.tx_ref, // Use the tx_ref from backend
                             amount: formData.amount, // Use the amount from backend response (or validated amount)
                             currency: "NGN",
@@ -865,7 +866,7 @@ $(document).ready(function () {
                                 "email": customerEmail,
                             }, // Use customer details from backend response
                             customizations: window.flutterwaveCustomization, // Keep your customizations
-                            redirect_url: window.location.origin + "/verify-payment", // Keep the redirect URL
+                            // redirect_url: window.location.origin + "/verify-payment", // Keep the redirect URL
                             // --- Step 3: Handle Flutterwave Callbacks (Client-Side) ---
                             // Note: The main verification happens on the backend via redirect_url.
                             // This callback is mostly for client-side UI updates or logging.
