@@ -5,9 +5,15 @@ $.ajaxSetup({
     },
 });
 
+function generateTransactionCode() {
+    const randomNumber = Math.floor(100000000 + Math.random() * 900000000); // ensures 9-digit number
+    return `TXN${randomNumber}`;
+}
+
 $(document).ready(function () {
     // get current service
     let currentService = null;
+    let isSmartCardVerified = false;
 
     // Each service has a title, subtitle, icon, color scheme, and form content
     const serviceConfig = {
@@ -392,9 +398,13 @@ $(document).ready(function () {
                 // If you don't trigger change, ensure the data plan select is either disabled or populated based on your app's logic
             }
         } else if (currentService === "cable") {
+            let verificationTimeout;
             const $modalContent = $("#modalContent");
             const $providerSelect = $modalContent.find("select").eq(0); // Provider select
             const $packageSelect = $modalContent.find("select").eq(1); // Package select
+            const $smartCardInput = $modalContent
+                .find('input[type="text"]')
+                .eq(0); // Smart Card input
             const $packagesGroup = $("#cable-packages"); // The div containing the package select
             const $loader = $("#cable-packages-loader"); // Loader element
 
@@ -417,12 +427,16 @@ $(document).ready(function () {
                 if (selectedProvider && billerCode) {
                     // Show loader before fetching
                     $loader.show();
-
+                    const getCableItemcode = "cable_tv_items";
                     // AJAX call to fetch cable packages
                     $.ajax({
-                        url: "/get-cable-packages", // Replace with your actual endpoint
+                        url: "/get-cable-packages",
                         method: "POST",
-                        data: { billercode: billerCode },
+                        data: {
+                            billercode: billerCode,
+                            service: currentService,
+                            type: getCableItemcode,
+                        },
                         beforeSend: function () {
                             $loader.show();
                         },
@@ -438,12 +452,60 @@ $(document).ready(function () {
                                     '<option disabled selected value="">Select a package</option>'
                                 );
 
-                                response.data.forEach(function (item) {
+                                // Nigeria-specific package filtering
+                                const excludedPackages = [
+                                    "Compact + Asia",
+                                    "Compact + French Touch",
+                                    "Compact + French Touch + Xtraview",
+                                    "Compact + Asia + Xtraview",
+                                    "Compact + French Plus",
+                                    "DStv French Touch Add-on Bouquet E36",
+                                    "DStv Asian Add-on Bouquet E36",
+                                    "DStv French Plus Add-on Bouquet E36",
+                                    "Dstv Great Wall standalone Bouquet",
+                                    "French 11 Bouquet E36",
+                                    "French 11",
+                                    "Premium + French",
+                                    "Premium + French + Xtraview",
+                                    "Premium + French Touch + HD/ExtraView",
+                                    "PremiumFrench + Showmax",
+                                    "Premium Asia + HD/ExtraView",
+                                    "Asian + HD/ExtraView",
+                                    "Asian + Showmax",
+                                    "Great Wall Standalone Bouquet E36 + Showmax",
+                                    "PremiumAsia + Xtraview",
+                                ];
+
+                                const filteredData = response.data.filter(
+                                    (item) =>
+                                        !excludedPackages.some(
+                                            (excluded) =>
+                                                excluded.toLowerCase() ===
+                                                item.name.toLowerCase()
+                                        )
+                                );
+
+                                if (filteredData.length === 0) {
+                                    $packageSelect.append(
+                                        '<option disabled selected value="">No packages found</option>'
+                                    );
+                                    $packageSelect.prop("disabled", true);
+                                    $packagesGroup.addClass("disabled-select");
+                                    $.elegantToastr.info(
+                                        "Info",
+                                        `No relevant packages found for ${selectedProvider.toUpperCase()}.`
+                                    );
+                                    return;
+                                }
+
+                                filteredData.forEach(function (item) {
                                     $packageSelect.append(
                                         $("<option></option>")
                                             .val(item.item_code)
                                             .text(
-                                                item.name + " - ₦" + item.amount
+                                                item.name +
+                                                    " - ₦" +
+                                                    item.amount.toLocaleString()
                                             )
                                             .attr(
                                                 "data-billercode",
@@ -461,7 +523,6 @@ $(document).ready(function () {
                                 $packageSelect.prop("disabled", false);
                                 $packagesGroup.removeClass("disabled-select");
                             } else {
-                                // Handle no packages found
                                 $packageSelect.append(
                                     '<option disabled selected value="">No packages found</option>'
                                 );
@@ -503,6 +564,100 @@ $(document).ready(function () {
                     $packagesGroup.addClass("disabled-select");
                     $packageSelect.show();
                 }
+            });
+
+            // Add change event listener to the Package select for smart card verification
+            $packageSelect.on("change", function () {
+                clearTimeout(verificationTimeout);
+                verificationTimeout = setTimeout(() => {
+                    const selectedPackage = $(this).val(); // item_code, e.g., CB177
+                    const smartCard = $smartCardInput.val(); // e.g., 8252678520
+                    const itemCode = $(this)
+                        .find("option:selected")
+                        .data("itemcode"); // e.g., CB177
+                    const packageName = $(this)
+                        .find("option:selected")
+                        .data("packagename"); // e.g., DSTV COMPACT
+
+                    // Validate inputs
+                    if (!smartCard || !selectedPackage || !itemCode) {
+                        $.elegantToastr.error(
+                            "Warning!",
+                            "Please enter a smart card number and select a package."
+                        );
+                        return;
+                    }
+
+                    // Validate smart card format (numeric)
+                    if (!/^[0-9]+$/.test(smartCard)) {
+                        $.elegantToastr.error(
+                            "Invalid Smart Card",
+                            "Smart card number must contain only digits."
+                        );
+                        return;
+                    }
+
+                    // Show loading SweetAlert
+                    Swal.fire({
+                        title: "Verifying Smart Card...",
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+
+                    // AJAX call to verify smart card
+                    $.ajax({
+                        url: "/verify-cable",
+                        method: "POST",
+                        data: {
+                            smart_card: smartCard,
+                            item_code: itemCode,
+                            package_name: packageName, // Optional, for display purposes
+                            _token: $('meta[name="csrf-token"]').attr(
+                                "content"
+                            ),
+                        },
+                        success: function (response) {
+                            Swal.close();
+                            if (
+                                response.status === "success" &&
+                                response.data
+                            ) {
+                                isSmartCardVerified = true;
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Customer Found",
+                                    html: `
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <p style="flex-direction: row;display: flex;justify-content: space-between;padding: 0 20px;"><strong>Customer Name:</strong><span style="margin-left: 10px;">${response.data.customer_name || "Not provided"}</span></p>
+                                        <p style="flex-direction: row;display: flex;justify-content: space-between;padding: 0 20px;"><strong>Smart Card:</strong><span style="margin-left: 10px;">${response.data.smart_card}</span></p>
+                                        <p style="flex-direction: row;display: flex;justify-content: space-between;padding: 0 20px;"><strong>Package:</strong><span style="margin-left: 10px;">${packageName}</span></p>
+                                        <p style="flex-direction: row;display: flex;justify-content: space-between;padding: 0 20px;"><strong>Status:</strong><span style="margin-left: 10px;">${response.data.status || "Unknown"}</span></p>
+                                    </div>
+                                    `,
+                                });
+                            } else {
+                                isSmartCardVerified = false;
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Verification Failed",
+                                    text: "Could not verify Smart Card Number, please verify Smart Card Number.",
+                                });
+                            }
+                        },
+                        error: function (xhr) {
+                            Swal.close();
+                            isSmartCardVerified = false;
+                            let errorMessage = "Could not verify Smart Card Number, please verify Smart Card Number.";
+                            Swal.fire({
+                                icon: "error",
+                                title: "Verification Failed", // 👈 Change title here
+                                text: errorMessage,
+                            });
+                        },
+                    });
+                }, 300);
             });
 
             // Initial state setup when modal opens
@@ -547,7 +702,11 @@ $(document).ready(function () {
         const disco = $("#meter_disco option:selected");
         const billerCode = disco.data("billercode");
 
-        console.log('meter number:' + meterNumber, 'meter type:' + meterType, 'billerCode' + billerCode);
+        console.log(
+            "meter number:" + meterNumber,
+            "meter type:" + meterType,
+            "billerCode" + billerCode
+        );
 
         if (meterNumber && meterType && billerCode) {
             Swal.fire({
@@ -628,7 +787,9 @@ $(document).ready(function () {
     // Function to process form submission based on service type
     function processServiceForm(service) {
         const formData = {}; // Object to store form values
-
+        const tx_ref = generateTransactionCode(); //generte transaction code
+        const customerName = $('#getUserName').text();
+        const customerEmail = $('#getUserEmail').text();
         // Depending on the service, validate and collect form data
         switch (service) {
             case "airtime":
@@ -644,9 +805,9 @@ $(document).ready(function () {
                     .find('input[type="number"]')
                     .val();
 
-                const balanceText = $("#userBalance").text();
-                const cleanedText = balanceText.replace(/[₦,]/g, "");
-                const userBalance = parseFloat(cleanedText);
+                // const balanceText = $("#userBalance").text();
+                // const cleanedText = balanceText.replace(/[₦,]/g, "");
+                // const userBalance = parseFloat(cleanedText);
 
                 if (
                     !formData.phoneNumber ||
@@ -666,13 +827,13 @@ $(document).ready(function () {
                     );
                     return;
                 }
-                if (parseFloat(formData.amount) > userBalance) {
-                    $.elegantToastr.error(
-                        "Insufficient Balance",
-                        "Your balance is insufficient for this recharge."
-                    );
-                    return;
-                }
+                // if (parseFloat(formData.amount) > userBalance) {
+                //     $.elegantToastr.error(
+                //         "Insufficient Balance",
+                //         "Your balance is insufficient for this recharge."
+                //     );
+                //     return;
+                // }
 
                 Swal.fire({
                     title: "Confirm Airtime Purchase",
@@ -685,72 +846,113 @@ $(document).ready(function () {
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: "Processing...",
-                            text: "Please wait while we recharge your line.",
+                            text: "Redirecting you to payment page",
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
                             },
                         });
                         formData.service = "airtime";
-                        $.ajax({
-                            url: "/process-service",
-                            method: "POST",
-                            data: formData,
-                            success: function (response) {
-                                /* ... success handling ... */
-                                if (response && response.status === "success") {
-                                    Swal.fire({
-                                        title: "Success!",
-                                        text: response.message || "...",
-                                        icon: "success",
-                                    });
-                                    if (
-                                        response.new_balance !== undefined &&
-                                        $("#userBalance").length
-                                    ) {
-                                        $("#userBalance").text(
-                                            `₦${Number(
-                                                response.new_balance
-                                            ).toLocaleString()}`
-                                        );
-                                    }
-                                    closeServiceModal();
+                        formData.tx_ref = tx_ref;
+                        FlutterwaveCheckout({
+                            public_key: "FLWPUBK_TEST-4680b6c537a7d0003ac847159f903391-X", // Your public key
+                            tx_ref: formData.tx_ref, // Use the tx_ref from backend
+                            amount: formData.amount, // Use the amount from backend response (or validated amount)
+                            currency: "NGN",
+                            payment_options: "card,banktransfer,ussd",
+                            customer: {
+                                "name": customerName,
+                                "email": customerEmail,
+                            }, // Use customer details from backend response
+                            customizations: window.flutterwaveCustomization, // Keep your customizations
+                            redirect_url: window.location.origin + "/verify-payment", // Keep the redirect URL
+                            // --- Step 3: Handle Flutterwave Callbacks (Client-Side) ---
+                            // Note: The main verification happens on the backend via redirect_url.
+                            // This callback is mostly for client-side UI updates or logging.
+                            callback: function (response) {
+                                console.log('Flutterwave client-side callback:', response);
+                                // Avoid doing server-side verification AJAX here.
+                                // The backend /verify-payment route handles verification after redirect.
+                                if (response.status === 'successful') {
+                                    console.log('the payment was successful');
+                                    // Optional: Show a quick success message in the modal
+                                    // $.elegantToastr.success("Payment initiated!", "Finalizing your transaction...");
+                                    // this is to send airtime to user
+                                    // $.ajax({
+                                    //     url: "/process-service",
+                                    //     method: "POST",
+                                    //     data: formData,
+                                    //     success: function (response) {
+                                    //         /* ... success handling ... */
+                                    //         if (response && response.status === "success") {
+                                    //             Swal.fire({
+                                    //                 title: "Success!",
+                                    //                 text: response.message || "...",
+                                    //                 icon: "success",
+                                    //             });
+                                    //             if (
+                                    //                 response.new_balance !== undefined &&
+                                    //                 $("#userBalance").length
+                                    //             ) {
+                                    //                 $("#userBalance").text(
+                                    //                     `₦${Number(
+                                    //                         response.new_balance
+                                    //                     ).toLocaleString()}`
+                                    //                 );
+                                    //             }
+                                    //             closeServiceModal();
+                                    //         } else {
+                                    //             Swal.fire({
+                                    //                 title: "Failed!",
+                                    //                 text: response.message || "...",
+                                    //                 icon: "error",
+                                    //             });
+                                    //         }
+                                    //     },
+                                    //     error: function (xhr, status, error) {
+                                    //         /* ... error handling ... */
+                                    //         console.error(
+                                    //             "AJAX Error:",
+                                    //             status,
+                                    //             error,
+                                    //             xhr.responseText
+                                    //         );
+                                    //         let errorMessage =
+                                    //             "Something went wrong. Please try again.";
+                                    //         if (
+                                    //             xhr.responseJSON &&
+                                    //             xhr.responseJSON.message
+                                    //         ) {
+                                    //             errorMessage = xhr.responseJSON.message;
+                                    //         } else if (xhr.responseText) {
+                                    //             errorMessage =
+                                    //                 "Error: " +
+                                    //                 xhr.responseText.substring(0, 100) +
+                                    //                 "...";
+                                    //         }
+                                    //         Swal.fire({
+                                    //             title: "Error!",
+                                    //             text: errorMessage,
+                                    //             icon: "error",
+                                    //         });
+                                    //     },
+                                    // });
+                                    // so i will redirect user to payment page
+                                    // but thee payment must work well
                                 } else {
-                                    Swal.fire({
-                                        title: "Failed!",
-                                        text: response.message || "...",
-                                        icon: "error",
-                                    });
+                                    // Optional: Show failure message if status isn't successful
+                                    // $.elegantToastr.error("Payment Failed", "Please try again.");
+                                    // restoreButtonState(); // May need this depending on Flutterwave behavior
                                 }
+                                // The modal will likely close or the page will redirect after this.
+                                // Final result is shown after the backend redirect.
                             },
-                            error: function (xhr, status, error) {
-                                /* ... error handling ... */
-                                console.error(
-                                    "AJAX Error:",
-                                    status,
-                                    error,
-                                    xhr.responseText
-                                );
-                                let errorMessage =
-                                    "Something went wrong. Please try again.";
-                                if (
-                                    xhr.responseJSON &&
-                                    xhr.responseJSON.message
-                                ) {
-                                    errorMessage = xhr.responseJSON.message;
-                                } else if (xhr.responseText) {
-                                    errorMessage =
-                                        "Error: " +
-                                        xhr.responseText.substring(0, 100) +
-                                        "...";
-                                }
-                                Swal.fire({
-                                    title: "Error!",
-                                    text: errorMessage,
-                                    icon: "error",
-                                });
+                            onclose: function () {
+                                console.log('Flutterwave modal closed');
+                                // Restore button state if user closes the modal manually
+                                restoreButtonState();
                             },
-                        });
+                        }); 
                     }
                 });
                 break;
@@ -812,9 +1014,9 @@ $(document).ready(function () {
                     .data("dataplan");
                 formData.biller_code = selectedBillerCode;
                 formData.item_code = selectedItemCode;
-                const balanceTextData = $("#userBalance").text();
-                const cleanedTextData = balanceTextData.replace(/[₦,]/g, "");
-                const userBalanceData = parseFloat(cleanedTextData);
+                // const balanceTextData = $("#userBalance").text();
+                // const cleanedTextData = balanceTextData.replace(/[₦,]/g, "");
+                // const userBalanceData = parseFloat(cleanedTextData);
                 const match = selectedPlanText.match(
                     /^(.+?\d+(?:\.\d+)?\s*(?:GB|MB))/i
                 );
@@ -926,15 +1128,15 @@ $(document).ready(function () {
                 formData.smartCard = $("#modalContent")
                     .find('input[type="text"]')
                     .eq(0)
-                    .val(); // Smart Card/IUC Number
+                    .val();
                 formData.provider = $("#modalContent")
                     .find("select")
                     .eq(0)
-                    .val(); // Provider (e.g., DSTV)
+                    .val();
                 formData.package = $("#modalContent")
                     .find("select")
                     .eq(1)
-                    .val(); // Package item code
+                    .val();
                 formData.billerCode = $("#modalContent")
                     .find("select")
                     .eq(1)
@@ -951,7 +1153,7 @@ $(document).ready(function () {
                     .find("option:selected")
                     .data("packagename");
 
-                // Extract amount from selected package text (e.g., "DSTV Premium - ₦24,500")
+                // Extract amount
                 const cableSelectedPackageText = $("#modalContent")
                     .find("select")
                     .eq(1)
@@ -963,11 +1165,15 @@ $(document).ready(function () {
                     ? parseFloat(cableAmountMatch[1].replace(/,/g, ""))
                     : 0;
 
+                // Check if type is getCableItemcode
+                formData.type = $("#modalContent").find("select").eq(1).val()
+                    ? ""
+                    : "getCableItemcode";
+
                 // Validate inputs
                 if (
                     !formData.smartCard ||
                     !formData.provider ||
-                    !formData.package ||
                     !formData.billerCode ||
                     !formData.itemCode ||
                     !formData.packageName ||
@@ -976,6 +1182,15 @@ $(document).ready(function () {
                     $.elegantToastr.error(
                         "Warning!",
                         "Please fill all inputs and select a valid package."
+                    );
+                    return;
+                }
+
+                // Validate smart card format
+                if (!/^[0-9]+$/.test(formData.smartCard) || !isSmartCardVerified) {
+                    $.elegantToastr.error(
+                        "Invalid Smart Card",
+                        "Invalid smart card number."
                     );
                     return;
                 }
@@ -993,7 +1208,142 @@ $(document).ready(function () {
                     return;
                 }
 
-                // Show confirmation dialog
+                // If type is getCableItemcode, fetch packages
+                if (formData.type === "getCableItemcode") {
+                    const $modalContent = $("#modalContent");
+                    const $packageSelect = $modalContent.find("select").eq(1);
+                    const $packagesGroup = $("#cable-packages");
+                    const $loader = $("#cable-packages-loader");
+
+                    $loader.show();
+                    $packageSelect.empty();
+                    $packageSelect.append(
+                        '<option disabled selected value="">Loading packages...</option>'
+                    );
+                    $packageSelect.prop("disabled", true);
+                    $packagesGroup.addClass("disabled-select");
+
+                    $.ajax({
+                        url: "/get-cable-packages",
+                        method: "POST",
+                        data: {
+                            billercode: formData.billerCode,
+                            service: "cable",
+                            type: "getCableItemcode",
+                        },
+                        beforeSend: function () {
+                            $loader.show();
+                        },
+                        success: function (response) {
+                            $packageSelect.empty();
+                            if (
+                                response.status === "success" &&
+                                response.data &&
+                                response.data.length > 0
+                            ) {
+                                $packageSelect.append(
+                                    '<option disabled selected value="">Select a package</option>'
+                                );
+                                // Nigeria-specific filtering
+                                const excludedPackages = [
+                                    "Compact + Asia",
+                                    "Compact + French Touch",
+                                    "Compact + French Touch + Xtraview",
+                                    "Compact + Asia + Xtraview",
+                                    "Compact + French Plus",
+                                    "DStv French Touch Add-on Bouquet E36",
+                                    "DStv Asian Add-on Bouquet E36",
+                                    "DStv French Plus Add-on Bouquet E36",
+                                    "Dstv Great Wall standalone Bouquet",
+                                    "French 11 Bouquet E36",
+                                    "French 11",
+                                    "Premium + French",
+                                    "Premium + French + Xtraview",
+                                    "Premium + French Touch + HD/ExtraView",
+                                    "PremiumFrench + Showmax",
+                                    "Premium Asia + HD/ExtraView",
+                                    "Asian + HD/ExtraView",
+                                    "Asian + Showmax",
+                                    "Great Wall Standalone Bouquet E36 + Showmax",
+                                    "PremiumAsia + Xtraview",
+                                ];
+                                const filteredData = response.data.filter(
+                                    (item) =>
+                                        !excludedPackages.some(
+                                            (excluded) =>
+                                                excluded.toLowerCase() ===
+                                                item.name.toLowerCase()
+                                        )
+                                );
+
+                                if (filteredData.length === 0) {
+                                    $packageSelect.append(
+                                        '<option disabled selected value="">No packages found</option>'
+                                    );
+                                    $packageSelect.prop("disabled", true);
+                                    $packagesGroup.addClass("disabled-select");
+                                    $.elegantToastr.info(
+                                        "Info",
+                                        `No relevant packages found for ${formData.provider.toUpperCase()}.`
+                                    );
+                                    return;
+                                }
+
+                                filteredData.forEach(function (item) {
+                                    $packageSelect.append(
+                                        $("<option></option>")
+                                            .val(item.item_code)
+                                            .text(
+                                                item.name +
+                                                    " - ₦" +
+                                                    item.amount.toLocaleString()
+                                            )
+                                            .attr(
+                                                "data-billercode",
+                                                item.biller_code
+                                            )
+                                            .attr(
+                                                "data-itemcode",
+                                                item.item_code
+                                            )
+                                            .attr("data-packagename", item.name)
+                                    );
+                                });
+                                $packageSelect.prop("disabled", false);
+                                $packagesGroup.removeClass("disabled-select");
+                            } else {
+                                $packageSelect.append(
+                                    '<option disabled selected value="">No packages found</option>'
+                                );
+                                $packageSelect.prop("disabled", true);
+                                $packagesGroup.addClass("disabled-select");
+                                $.elegantToastr.info(
+                                    "Info",
+                                    `No packages found for ${formData.provider.toUpperCase()}.`
+                                );
+                            }
+                        },
+                        error: function (xhr) {
+                            $packageSelect.empty();
+                            $packageSelect.append(
+                                '<option disabled selected value="">Failed to load packages</option>'
+                            );
+                            $packageSelect.prop("disabled", true);
+                            $packagesGroup.addClass("disabled-select");
+                            let errorMessage = "Failed to load packages.";
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMessage = xhr.responseJSON.message;
+                            }
+                            $.elegantToastr.error("Error", errorMessage);
+                        },
+                        complete: function () {
+                            $loader.hide();
+                        },
+                    });
+                    return; // Stop further processing
+                }
+
+                // Proceed with payment
                 Swal.fire({
                     title: "Confirm Cable Subscription",
                     html: `Subscribe to ${
@@ -1007,7 +1357,6 @@ $(document).ready(function () {
                     cancelButtonText: "Cancel",
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Show processing dialog
                         Swal.fire({
                             title: "Processing...",
                             text: "Please wait while we process your subscription.",
@@ -1017,10 +1366,8 @@ $(document).ready(function () {
                             },
                         });
 
-                        // Set service type
                         formData.service = "cable";
 
-                        // Send AJAX request
                         $.ajax({
                             url: "/process-service",
                             method: "POST",
@@ -1034,7 +1381,6 @@ $(document).ready(function () {
                                             "Cable subscription successful!",
                                         icon: "success",
                                     });
-                                    // Update user balance if provided
                                     if (
                                         response.new_balance !== undefined &&
                                         $("#userBalance").length

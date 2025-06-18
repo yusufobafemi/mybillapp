@@ -7,7 +7,7 @@
     </div>
     <div class="balance-amount">
         <h2 id="userBalance">{{ $amount }}</h2>
-        <span class="balance-change {{ $changeType }}">{{ $changeText }}</span>
+        {{-- <span class="balance-change {{ $changeType }}">{{ $changeText }}</span> --}}
     </div>
     <div class="action-buttons">
         <button class="btn primary-btn" id="addmoney">

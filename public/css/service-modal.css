@@ -377,3 +377,28 @@
     border-color: #cccccc;
     opacity: 0.7;
   }
+
+  /* this is to add not available to the button of what is not 
+  available */
+  .not-available {
+    position: relative;
+    filter: grayscale(100%);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.not-available::after {
+    content: "Not Available";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(128, 128, 128, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 10;
+}

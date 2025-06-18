@@ -3,13 +3,23 @@
         <h3>Quick Actions</h3>
     </div>
     <div class="actions-grid">
-        @foreach($service_config as $key => $service)
-            <div class="action-item srv-grid-item-card" data-service="{{  $key  }}">
+    @foreach($service_config as $key => $service)
+        @if(in_array($service['class'], ['electricity', 'bills', 'internet']))
+            <div class="action-item srv-grid-item-card not-available" data-service="{{ $key }}">
                 <div class="action-icon {{ $service['class'] }}">
                     <i class="{{ $service['icon'] }}"></i>
                 </div>
                 <span>{{ $service['title'] }}</span>
             </div>
-        @endforeach
-    </div>
+        @else
+            <div class="action-item srv-grid-item-card" data-service="{{ $key }}">
+                <div class="action-icon {{ $service['class'] }}">
+                    <i class="{{ $service['icon'] }}"></i>
+                </div>
+                <span>{{ $service['title'] }}</span>
+            </div>
+        @endif
+    @endforeach
+</div>
+
 </div>

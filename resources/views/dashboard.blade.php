@@ -10,6 +10,10 @@
     <main class="dashboard-container">
         <!-- Welcome Section -->
         <section class="welcome-section">
+            <div style="display:none;">
+                <p style="display:none;" id="getUserName">{{ auth()->user()->name }}</p>
+                <p style="display:none;" id="getUserEmail">{{ auth()->user()->email }}</p>
+            </div>
             <div class="welcome-text">
                 <h1>Welcome back, <span class="highlight">Alex</span></h1>
                 <p>Manage your payments and transactions</p>
@@ -22,7 +26,7 @@
         <!-- Dashboard Grid -->
         <div class="dashboard-grid">
             <!-- Balance Card -->
-            @auth
+            {{-- @auth
                 <x-balance-card 
                     title="Account Balance" 
                     icon="fas fa-wallet" 
@@ -31,7 +35,7 @@
                     change-type="positive" 
                     add-button-text="Add Money"
                 />
-            @endauth
+            @endauth --}}
 
             {{-- test service modal --}}
             <x-service-modal />
@@ -40,7 +44,7 @@
             <x-quick-actions />
 
             <!-- Upcoming Bills -->
-            <x-upcoming-bills />
+            {{-- <x-upcoming-bills /> --}}
 
             {{-- this is the modal view for deposit --}}
             <x-wallet-modal />
@@ -250,7 +254,7 @@
                 </div>
                 <button class="btn outline-btn small-btn">View</button>
             </div>
-            <div class="notification-item alert">
+            {{-- <div class="notification-item alert">
                 <div class="notification-icon">
                     <i class="fas fa-bell"></i>
                 </div>
@@ -259,7 +263,7 @@
                     <p>Your DSTV subscription will expire in 5 days. Renew now to avoid service interruption.</p>
                 </div>
                 <button class="btn primary-btn small-btn">Renew</button>
-            </div>
+            </div> --}}
         </section>
     </main>
 @endsection

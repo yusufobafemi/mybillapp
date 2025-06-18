@@ -12,10 +12,23 @@ use Illuminate\Support\Facades\Http;
 
 class ServiceController extends Controller
 {
+
     public function processService(Request $request)
     {
         $serviceType = $request->input('service');
+        $type = $request->input('type');
 
+        // For cable service, check if type is getCableItemcode
+        if ($serviceType === 'cable' && $type === 'getCableItemcode') {
+            // Validate billercode for fetching packages
+            $request->validate([
+                'billercode' => 'required|string',
+            ]);
+
+            return $this->getCablePlans($request);
+        }
+
+        // Otherwise, proceed with existing service processing
         switch ($serviceType) {
             case 'airtime':
                 return $this->processAirtime($request);
@@ -23,8 +36,6 @@ class ServiceController extends Controller
                 return $this->processData($request);
             case 'cable':
                 return $this->processCable($request);
-
-                // Later add: data, cable, etc.
             default:
                 return response()->json(['error' => 'Unsupported service'], 400);
         }
@@ -648,71 +659,83 @@ class ServiceController extends Controller
      */
     public function getCablePlans(Request $request)
     {
-        // Validate the incoming request
-        $request->validate([
-            'billercode' => 'required|string',
-        ]);
-
-        // Extract biller code
-        $billerCode = $request->input('billercode');
-
         try {
-            // Make API call to Flutterwave
-            $response = Http::withToken(env('FLW_SECRET_KEY'))
-                ->get("https://api.flutterwave.com/v3/billers/{$billerCode}/items");
-
-            // Log the request and response for debugging
-            Log::info('Flutterwave Cable Plans Request:', [
-                'biller_code' => $billerCode,
-                'endpoint' => "https://api.flutterwave.com/v3/billers/{$billerCode}/items",
-            ]);
-
-            // Check if the response is successful (HTTP 2xx)
-            if ($response->successful()) {
-                $data = $response->json()['data'] ?? [];
-
-                Log::info('Flutterwave Cable Plans Response:', [
-                    'biller_code' => $billerCode,
-                    'status' => 'success',
-                    'data_count' => count($data),
-                ]);
-
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Cable packages retrieved successfully',
-                    'data' => $data,
-                ]);
+            $billerCode = $request->input('billercode');
+            if (!$billerCode) {
+                return response()->json(['error' => 'Biller code is required'], 400);
             }
 
-            // Handle non-2xx HTTP responses
-            Log::error('Failed to fetch cable plans from Flutterwave:', [
-                'biller_code' => $billerCode,
-                'status_code' => $response->status(),
-                'response_body' => $response->body(),
-            ]);
+            $url = "https://api.flutterwave.com/v3/billers/{$billerCode}/items";
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('FLW_SECRET_KEY'),
+                'Content-Type' => 'application/json',
+            ])->get($url);
+
+            if ($response->failed()) {
+                Log::error('Flutterwave API error', ['response' => $response->json()]);
+                return response()->json(['error' => 'Failed to fetch cable plans'], 500);
+            }
+
+            $responseData = $response->json();
+            Log::info('Flutterwave response', ['response' => $responseData]);
+
+            if ($responseData['status'] !== 'success' || empty($responseData['data'])) {
+                return response()->json(['error' => 'No cable plans found'], 404);
+            }
+
+            // List of package names to exclude
+            $excludedPackages = [
+                'Compact + Asia',
+                'Compact + French Touch',
+                'Compact + French Touch + Xtraview',
+                'Compact + Asia + Xtraview',
+                'Compact + French Plus',
+                'DStv French Touch Add-on Bouquet E36',
+                'DStv Asian Add-on Bouquet E36',
+                'DStv French Plus Add-on Bouquet E36',
+                'Dstv Great Wall standalone Bouquet',
+                'French 11 Bouquet E36',
+                'French 11',
+                'Premium + French',
+                'Premium + French + Xtraview',
+                'Premium + French Touch + HD/ExtraView',
+                'PremiumFrench + Showmax',
+                'Premium Asia + HD/ExtraView',
+                'Asian + HD/ExtraView',
+                'Asian + Showmax',
+                'DSTV PREMIUM ASIA',
+                'Compact Plus + Asia +Xtraview',
+                'Compact Plus + French Touch',
+                'Compact Plus + French Plus',
+                'CompactPlus + French Plus + Xtraview',
+                'Great Wall Standalone Bouquet E36 + Showmax',
+                'PremiumAsia + Xtraview',
+            ];
+
+            // Filter out excluded packages (case-insensitive)
+            $filteredData = array_filter($responseData['data'], function ($item) use ($excludedPackages) {
+                return !in_array(strtolower($item['name']), array_map('strtolower', $excludedPackages));
+            });
+
+            // Reindex the array
+            $filteredData = array_values($filteredData);
+
+            if (empty($filteredData)) {
+                return response()->json(['error' => 'No relevant cable plans found'], 404);
+            }
 
             return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to fetch cable packages from Flutterwave',
-                'data' => [],
-            ], $response->status());
+                'status' => 'success',
+                'message' => 'Cable plans fetched successfully',
+                'data' => $filteredData,
+            ], 200);
         } catch (\Exception $e) {
-            // Handle exceptions (e.g., network issues, invalid API key)
-            Log::error('Exception occurred while fetching cable plans:', [
-                'biller_code' => $billerCode,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'An error occurred: ' . $e->getMessage(),
-                'data' => [],
-            ], 500);
+            Log::error('Error fetching cable plans', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'An error occurred'], 500);
         }
     }
 
-    //verify meter number
+    //verify electricity meter number
     public function verifyMeterNumber(Request $request)
     {
         $request->validate([
@@ -749,6 +772,57 @@ class ServiceController extends Controller
             return response()->json([
                 'status' => 'fail',
                 'message' => 'Server error while verifying meter number.'
+            ], 500);
+        }
+    }
+
+    // verify cable tv number
+    public function verifyCable(Request $request)
+    {
+        // Validate request inputs
+        $request->validate([
+            'smart_card' => ['required', 'string', 'regex:/^[0-9]+$/'], // Numeric smart card
+            'item_code' => 'required|string', // e.g., CB177
+        ]);
+
+        try {
+            $smartCard = $request->input('smart_card');
+            $itemCode = $request->input('item_code');
+
+            // Call Flutterwave API to validate smart card
+            $url = "https://api.flutterwave.com/v3/bill-items/{$itemCode}/validate?customer={$smartCard}";
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('FLW_SECRET_KEY'),
+                'Content-Type' => 'application/json',
+            ])->get($url); // Note: GET request as per the endpoint structure
+
+            $result = $response->json();
+            Log::info('Flutterwave cable validation response', ['response' => $result]);
+
+            if ($response->successful() && $result['status'] === 'success' && !empty($result['data'])) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'customer_name' => $result['data']['name'] ?? 'Unknown', // Adjust field based on actual response
+                        'smart_card' => $smartCard,
+                        'status' => $result['data']['status'] ?? 'N/A',
+                    ],
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 'fail',
+                'message' => $result['message'] ?? 'Could not verify smart card.',
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error verifying cable smart card', [
+                'error' => $e->getMessage(),
+                'smart_card' => $request->input('smart_card'),
+                'item_code' => $request->input('item_code'),
+            ]);
+            return response()->json([
+                'status' => 'fail',
+                'message' => 'Server error while verifying smart card.',
             ], 500);
         }
     }

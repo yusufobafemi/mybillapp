@@ -115,6 +115,10 @@ Route::post('/get-data-info', [ServiceController::class, 'getDataPlans'])->middl
 
 Route::get('/test-data-purchase', [TestController::class, 'processData']);
 
+// Route::post('/process-cable', [ServiceController::class, 'processCable']);
+
 Route::post('/get-cable-packages', [ServiceController::class, 'getCablePlans']);
 
-Route::post('/verify-meter', [ServiceController::class, 'verifyMeterNumber']);
+Route::post('/verify-meter', [ServiceController::class, 'verifyMeterNumber']);//this is to verify meter number
+
+Route::post('/verify-cable', [ServiceController::class, 'verifyCable'])->name('verify-cable');//this is to verify cable number
