@@ -8,11 +8,123 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use App\Models\TransactionLog;
 
 
 class ServiceController extends Controller
 {
 
+    /**
+     * Verify Flutterwave payment inline.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyPaymentInline(Request $request)
+    {
+        // Validate incoming request
+        $request->validate([
+            'tx_ref' => 'required|string',
+            'transaction_id' => 'required|string',
+            'service' => 'required|string|in:airtime',
+            'phoneNumber' => 'required|numeric',
+            'network' => 'required|string',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        $txRef = $request->tx_ref;
+        $transactionId = $request->transaction_id;
+        $service = $request->service;
+        $phoneNumber = $request->phoneNumber;
+        $network = $request->network;
+        $amount = (float) $request->amount;
+
+        // Ensure authenticated user
+        $user = auth('web')->user();
+        if (!$user) {
+            Log::warning('Unauthenticated attempt to verify payment', ['tx_ref' => $txRef]);
+            return response()->json(['status' => 'error', 'message' => 'Unauthenticated.'], 401);
+        }
+
+        try {
+            // Call Flutterwave's transaction verification API
+            $response = Http::withToken(env('FLW_SECRET_KEY'))
+                ->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
+
+            $result = $response->json();
+            Log::info('Flutterwave Payment Verification Response', [
+                'tx_ref' => $txRef,
+                'transaction_id' => $transactionId,
+                'response' => $result,
+            ]);
+
+            // Check if API call was successful and payment is valid
+            if ($response->successful() && 
+                isset($result['status']) && $result['status'] === 'success' && 
+                $result['data']['tx_ref'] === $txRef && 
+                $result['data']['amount'] >= $amount &&
+                $result['data']['status'] === 'successful') {
+                
+                // Update transaction status to payment made
+                $transaction = \App\Models\Transaction::create([
+                    'user_id' => $user->id,
+                    'transaction_type_id' => 1,  // 1 for payment made
+                    'amount' => $amount,
+                    'status' => 'successful',
+                    'reference' => $txRef,
+                    'description' => "User Account Debited",
+                ]);
+
+                return $this->processService( $request);
+
+            } else {
+                // Log failure details
+                Log::error('Payment Verification Failed', [
+                    'tx_ref' => $txRef,
+                    'transaction_id' => $transactionId,
+                    'response' => $result,
+                ]);
+
+                // Update transaction to failed if appropriate
+                $transaction = \App\Models\Transaction::create([
+                    'user_id' => $user->id,
+                    'transaction_type_id' => 1,  // 1 for payment made
+                    'amount' => $amount,
+                    'status' => 'Failed',
+                    'reference' => $txRef,
+                    'description' => "Unable To Debit Account",
+                ]);
+
+                $errorMessage = $result['message'] ?? 'Payment verification failed.';
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $errorMessage,
+                    'transaction_ref' => $txRef,
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            // Log exception details
+            Log::error('Error during Payment Verification', [
+                'tx_ref' => $txRef,
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Update transaction to failed transactionlog
+            TransactionLog::create([
+                'transaction_id' => $transaction->id,
+                'status' => 'failed',
+                'response_data' => ['error' => $e->getMessage()],
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Server error during payment verification.',
+                'transaction_ref' => $txRef,
+            ], 500);
+        }
+    }
     public function processService(Request $request)
     {
         $serviceType = $request->input('service');

@@ -122,3 +122,5 @@ Route::post('/get-cable-packages', [ServiceController::class, 'getCablePlans']);
 Route::post('/verify-meter', [ServiceController::class, 'verifyMeterNumber']);//this is to verify meter number
 
 Route::post('/verify-cable', [ServiceController::class, 'verifyCable'])->name('verify-cable');//this is to verify cable number
+
+Route::post('/verify-payment-inline', [ServiceController::class, 'verifyPaymentInline']);
