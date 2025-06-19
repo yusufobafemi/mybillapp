@@ -872,7 +872,7 @@ $(document).ready(function () {
                             // This callback is mostly for client-side UI updates or logging.
                             callback: function (response) {
                                 console.log("Flutterwave client-side callback:", response);
-                                if (response.status === "successful") {
+                                if (response.status === "completed") {
                                     Swal.fire({
                                         title: "Verifying Payment...",
                                         text: "Please wait while we confirm your payment.",
