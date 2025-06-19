@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export GIT_DIR=$PWD/.git
+    - export GIT_WORK_TREE=$PWD
+    - /usr/local/cpanel/3rdparty/bin/git fetch origin
+    - /usr/local/cpanel/3rdparty/bin/git reset --hard origin/main
+    - /usr/local/cpanel/3rdparty/bin/git clean -fd
+    - php artisan migrate --force
