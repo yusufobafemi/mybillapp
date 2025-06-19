@@ -846,7 +846,7 @@ $(document).ready(function () {
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: "Processing...",
-                            text: "Redirecting you to payment page",
+                            text: "Loading payment page",
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
@@ -872,7 +872,7 @@ $(document).ready(function () {
                             // This callback is mostly for client-side UI updates or logging.
                             callback: function (response) {
                                 console.log("Flutterwave client-side callback:", response);
-                                if (response.status === "completed") {
+                                if (response.status === "completed" && response.charge_response_message === "Approved Successful") {
                                     Swal.fire({
                                         title: "Verifying Payment...",
                                         text: "Please wait while we confirm your payment.",
@@ -895,60 +895,62 @@ $(document).ready(function () {
                                             amount: formData.amount,
                                         },
                                         success: function (verifyResponse) {
-                                            if (verifyResponse.status === "success") {
-                                                // Deliver airtime
-                                                $.ajax({
-                                                    url: "/process-service",
-                                                    method: "POST",
-                                                    data: formData,
-                                                    success: function (serviceResponse) {
-                                                        Swal.close();
-                                                        if (serviceResponse.status === "success") {
-                                                            Swal.fire({
-                                                                title: "Success!",
-                                                                text: serviceResponse.message || "Airtime top-up successful!",
-                                                                icon: "success",
-                                                            });
-                                                            // Update balance if applicable
-                                                            if (serviceResponse.new_balance !== undefined && $("#userBalance").length) {
-                                                                $("#userBalance").text(
-                                                                    `₦${Number(serviceResponse.new_balance).toLocaleString()}`
-                                                                );
-                                                            }
-                                                            closeServiceModal();
-                                                        } else {
-                                                            Swal.fire({
-                                                                title: "Failed!",
-                                                                text: serviceResponse.message || "Airtime top-up failed.",
-                                                                icon: "error",
-                                                            });
-                                                        }
-                                                    },
-                                                    error: function (xhr) {
-                                                        Swal.close();
-                                                        let errorMessage = "Failed to deliver airtime. Please contact support.";
-                                                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                                                            errorMessage = xhr.responseJSON.message;
-                                                        }
-                                                        Swal.fire({
-                                                            title: "Error!",
-                                                            text: errorMessage,
-                                                            icon: "error",
-                                                        });
-                                                    },
-                                                    complete: function () {
-                                                        $("#proceedServiceModalBtn").prop("disabled", false);
-                                                    },
-                                                });
-                                            } else {
-                                                Swal.close();
-                                                Swal.fire({
-                                                    title: "Payment Verification Failed",
-                                                    text: verifyResponse.message || "Payment could not be verified.",
-                                                    icon: "error",
-                                                });
-                                                $("#proceedServiceModalBtn").prop("disabled", false);
-                                            }
+                                            // if (verifyResponse.status === "success") {
+                                            //     // Deliver airtime
+                                            //     $.ajax({
+                                            //         url: "/process-service",
+                                            //         method: "POST",
+                                            //         data: formData,
+                                            //         success: function (serviceResponse) {
+                                            //             Swal.close();
+                                            //             if (serviceResponse.status === "success") {
+                                            //                 Swal.fire({
+                                            //                     title: "Success!",
+                                            //                     text: serviceResponse.message || "Airtime top-up successful!",
+                                            //                     icon: "success",
+                                            //                 });
+                                            //                 // Update balance if applicable
+                                            //                 if (serviceResponse.new_balance !== undefined && $("#userBalance").length) {
+                                            //                     $("#userBalance").text(
+                                            //                         `₦${Number(serviceResponse.new_balance).toLocaleString()}`
+                                            //                     );
+                                            //                 }
+                                            //                 closeServiceModal();
+                                            //             } else {
+                                            //                 Swal.fire({
+                                            //                     title: "Failed!",
+                                            //                     text: serviceResponse.message || "Airtime top-up failed.",
+                                            //                     icon: "error",
+                                            //                 });
+                                            //             }
+                                            //         },
+                                            //         error: function (xhr) {
+                                            //             Swal.close();
+                                            //             let errorMessage = "Failed to deliver airtime. Please contact support.";
+                                            //             if (xhr.responseJSON && xhr.responseJSON.message) {
+                                            //                 errorMessage = xhr.responseJSON.message;
+                                            //             }
+                                            //             Swal.fire({
+                                            //                 title: "Error!",
+                                            //                 text: errorMessage,
+                                            //                 icon: "error",
+                                            //             });
+                                            //         },
+                                            //         complete: function () {
+                                            //             $("#proceedServiceModalBtn").prop("disabled", false);
+                                            //         },
+                                            //     });
+                                            // } else {
+                                            //     Swal.close();
+                                            //     Swal.fire({
+                                            //         title: "Payment Verification Failed",
+                                            //         text: verifyResponse.message || "Payment could not be verified.",
+                                            //         icon: "error",
+                                            //     });
+                                            //     $("#proceedServiceModalBtn").prop("disabled", false);
+                                            // }
+                                            //payment is made and airtime purchase is maade
+                                            console.log(verifyResponse);
                                         },
                                         error: function (xhr) {
                                             Swal.close();
