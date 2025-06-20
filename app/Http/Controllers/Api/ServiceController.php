@@ -23,6 +23,7 @@ class ServiceController extends Controller
      */
     public function verifyPaymentInline(Request $request)
     {
+        $liveSecretKey = config('services.flutterwave.live_secret_key');
         $secretKey = config('services.flutterwave.secret_key');
         // Validate incoming request
         $request->validate([
@@ -50,7 +51,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave's transaction verification API
-            $response = Http::withToken($secretKey)
+            $response = Http::withToken($liveSecretKey)
                 ->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
 
             $result = $response->json();
@@ -68,8 +69,8 @@ class ServiceController extends Controller
                 $result['data']['amount'] >= $amount &&
                 $result['data']['status'] === 'successful') {
                 
-                // Update transaction status to payment made
-                $transaction = \App\Models\Transaction::create([
+                // create transaction status to payment made
+                \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'transaction_type_id' => 1,  // 1 for payment made
                     'amount' => $amount,
@@ -89,8 +90,8 @@ class ServiceController extends Controller
                     'key' => env('FLW_SECRET_KEY_TEST'),
                 ]);
 
-                // Update transaction to failed if appropriate
-                $transaction = \App\Models\Transaction::create([
+                // create transaction to failed if appropriate
+                \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'transaction_type_id' => 1,  // 1 for payment made
                     'amount' => $amount,
