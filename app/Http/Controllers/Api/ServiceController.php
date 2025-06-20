@@ -181,10 +181,6 @@ class ServiceController extends Controller
         $amount = $request->input('amount');
         $reference = $txRef;
 
-        if ($user->balance < $amount) {
-            return response()->json(['error' => 'Insufficient balance.'], 400);
-        }
-
         try {
             // Call Flutterwave API to buy airtime
             $response = Http::withToken( $liveSecretKey)
@@ -220,7 +216,6 @@ class ServiceController extends Controller
                     'status' => 'success',
                     'message' => 'Airtime purchase successful!',
                     'transaction' => $transaction,
-                    'new_balance' => $user->fresh()->balance,
                 ]);
             } else {
                 // Log the failure in the response
