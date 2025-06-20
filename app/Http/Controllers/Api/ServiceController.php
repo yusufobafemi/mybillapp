@@ -84,6 +84,7 @@ class ServiceController extends Controller
                     'tx_ref' => $txRef,
                     'transaction_id' => $transactionId,
                     'response' => $result,
+                    'key' => env('FLW_SECRET_KEY_TEST'),
                 ]);
 
                 // Update transaction to failed if appropriate
