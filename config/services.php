@@ -36,6 +36,10 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
+    'flutterwave' => [
+        'secret_key' => env('FLW_SECRET_KEY_TEST'),
+    ],
+
 
 
 ];

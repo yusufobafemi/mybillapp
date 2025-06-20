@@ -19,9 +19,11 @@ class ServiceController extends Controller
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
+     * 
      */
     public function verifyPaymentInline(Request $request)
     {
+        $secretKey = config('services.flutterwave.secret_key');
         // Validate incoming request
         $request->validate([
             'tx_ref' => 'required|string',
@@ -48,7 +50,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave's transaction verification API
-            $response = Http::withToken(env('FLW_SECRET_KEY_TEST'))
+            $response = Http::withToken($secretKey)
                 ->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
 
             $result = $response->json();
@@ -56,7 +58,7 @@ class ServiceController extends Controller
                 'tx_ref' => $txRef,
                 'transaction_id' => $transactionId,
                 'response' => $result,
-                'key' => env('FLW_SECRET_KEY_TEST'),
+                'key' => $secretKey,
             ]);
 
             // Check if API call was successful and payment is valid
