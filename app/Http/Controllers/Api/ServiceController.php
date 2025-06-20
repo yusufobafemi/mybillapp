@@ -78,6 +78,12 @@ class ServiceController extends Controller
                     'description' => "User Account Debited",
                 ]);
 
+                Log::error('request info b4 airtimee top up', [
+                    'tx_ref' => $txRef,
+                    'transaction_id' => $transactionId,
+                    'response' => $request,
+                ]);
+
                 return $this->processService( $request);
 
             } else {
