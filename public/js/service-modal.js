@@ -979,6 +979,7 @@ $(document).ready(function () {
                             onclose: function () {
                                 console.log('Flutterwave modal closed');
                                 flutterwaveModal.close();
+                                Swal.close();
                             },
                         }); 
                     }
