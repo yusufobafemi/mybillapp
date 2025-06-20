@@ -115,7 +115,7 @@ class ServiceController extends Controller
 
             // Update transaction to failed transactionlog
             TransactionLog::create([
-                'transaction_id' => $transaction->id,
+                'transaction_id' => $transactionId,
                 'status' => 'failed',
                 'response_data' => ['error' => $e->getMessage()],
             ]);
