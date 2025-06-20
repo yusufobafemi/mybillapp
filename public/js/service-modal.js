@@ -976,17 +976,9 @@ $(document).ready(function () {
                                     $("#proceedServiceModalBtn").prop("disabled", false);
                                 }
                             },
-                            onclose: function(incomplete) {
-                               if (incomplete || window.verified === false) {
-                                   document.querySelector("#payment-failed").style.display = 'block';
-                                } else {
-                                   document.querySelector("form").style.display = 'none';
-                                   if (window.verified == true) {
-                                      document.querySelector("#payment-success").style.display = 'block';
-                                    } else {
-                                      document.querySelector("#payment-pending").style.display = 'block';
-                                    }
-                                }
+                            onclose: function () {
+                                console.log('Flutterwave modal closed');
+                                flutterwaveModal.close();
                             },
                         }); 
                     }
