@@ -854,7 +854,7 @@ $(document).ready(function () {
                         });
                         formData.service = "airtime";
                         formData.tx_ref = tx_ref;
-                        FlutterwaveCheckout({
+                        const flutterwaveModal = FlutterwaveCheckout({
                             //FLWPUBK-6ecd4d6df722528e0cf41c5fad8552bb-X
                             public_key: "FLWPUBK_TEST-3aff844cef3e5730b10d19d591adc641-X", // Your public key
                             tx_ref: formData.tx_ref, // Use the tx_ref from backend
@@ -865,7 +865,11 @@ $(document).ready(function () {
                                 "name": customerName,
                                 "email": customerEmail,
                             }, // Use customer details from backend response
-                            customizations: window.flutterwaveCustomization, // Keep your customizations
+                            customizations: {
+                                title: 'The Titanic Store',
+                                description: 'Payment for an awesome cruise',
+                                logo: 'https://www.logolynx.com/images/logolynx/22/2239ca38f5505fbfce7e55bbc0604386.jpeg',
+                            }, // Keep your customizations
                             // redirect_url: window.location.origin + "/verify-payment", // Keep the redirect URL
                             // --- Step 3: Handle Flutterwave Callbacks (Client-Side) ---
                             // Note: The main verification happens on the backend via redirect_url.
@@ -972,10 +976,17 @@ $(document).ready(function () {
                                     $("#proceedServiceModalBtn").prop("disabled", false);
                                 }
                             },
-                            onclose: function () {
-                                console.log('Flutterwave modal closed');
-                                // Restore button state if user closes the modal manually
-                                restoreButtonState();
+                            onclose: function(incomplete) {
+                               if (incomplete || window.verified === false) {
+                                   document.querySelector("#payment-failed").style.display = 'block';
+                                } else {
+                                   document.querySelector("form").style.display = 'none';
+                                   if (window.verified == true) {
+                                      document.querySelector("#payment-success").style.display = 'block';
+                                    } else {
+                                      document.querySelector("#payment-pending").style.display = 'block';
+                                    }
+                                }
                             },
                         }); 
                     }
