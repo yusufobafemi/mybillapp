@@ -48,7 +48,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave's transaction verification API
-            $response = Http::withToken(env('FLW_SECRET_KEY'))
+            $response = Http::withToken(env('FLW_SECRET_KEY_TEST'))
                 ->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
 
             $result = $response->json();
