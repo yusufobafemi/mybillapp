@@ -78,12 +78,6 @@ class ServiceController extends Controller
                     'description' => "User Account Debited",
                 ]);
 
-                Log::error('request info b4 airtimee top up', [
-                    'tx_ref' => $txRef,
-                    'transaction_id' => $transactionId,
-                    'response' => $request,
-                ]);
-
                 return $this->processService( $request);
 
             } else {
@@ -165,6 +159,7 @@ class ServiceController extends Controller
 
     private function processAirtime(Request $request)
     {
+        $liveSecretKey = config('services.flutterwave.live_secret_key');
         $user = auth('web')->user();
 
         // Check if user is authenticated BEFORE trying to use $user
@@ -192,7 +187,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave API to buy airtime
-            $response = Http::withToken(env('FLW_SECRET_KEY'))
+            $response = Http::withToken( $liveSecretKey)
                 ->post('https://api.flutterwave.com/v3/bills', [
                     'country' => 'NG',
                     'customer' => $request->phoneNumber,

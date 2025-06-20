@@ -38,6 +38,7 @@ return [
     ],
     'flutterwave' => [
         'secret_key' => env('FLW_SECRET_KEY_TEST'),
+        'live_secret_key' => env('FLW_SECRET_KEY'),
     ],
 
 
