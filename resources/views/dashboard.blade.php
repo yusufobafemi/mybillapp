@@ -93,28 +93,6 @@
         <section id="transactions-section" class="transactions-section">
             <div class="section-header">
                 <h2>Transaction History</h2>
-                <div class="xai-section-actions">
-                    <button class="xai-btn xai-outline-btn xai-filter-btn" data-type="airtime">
-                        <i class="fas fa-mobile-alt"></i>
-                        <span>Airtime</span>
-                    </button>
-                    <button class="xai-btn xai-outline-btn xai-filter-btn" data-type="data">
-                        <i class="fas fa-wifi"></i>
-                        <span>Data</span>
-                    </button>
-                    <button class="xai-btn xai-outline-btn xai-filter-btn" data-type="cable">
-                        <i class="fas fa-tv"></i>
-                        <span>Cable TV</span>
-                    </button>
-                    <button class="xai-btn xai-outline-btn xai-filter-btn" data-type="internet">
-                        <i class="fas fa-globe"></i>
-                        <span>Internet</span>
-                    </button>
-                    <button class="xai-btn xai-outline-btn xai-filter-btn" data-type="electricity">
-                        <i class="fas fa-bolt"></i>
-                        <span>Electricity</span>
-                    </button>
-                </div>
             </div>
 
             <div class="transactions-table-container">
