@@ -116,7 +116,8 @@
                     </thead>
                     <tbody>
                         @forelse($transactions as $transaction)
-                            <x-transaction-row 
+                        <p>{{$transaction->created_at->format('d M Y')}}</p>
+                            {{-- <x-transaction-row 
                                 :date="$transaction->created_at->format('d M Y')" 
                                 :time="$transaction->created_at->format('h:i A')" 
                                 :transactionId="strtoupper($transaction->reference)"
@@ -129,7 +130,7 @@
                                 :amountClass= "'debit'" 
                                 :status="$transaction->status" 
                                 :statusClass="strtolower($transaction->status)" 
-                            />
+                            /> --}}
                         @empty
                             <tr>
                                 <td colspan="7" class="text-center">No transactions found.</td>
