@@ -115,6 +115,30 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @forelse($transactions as $transaction)
+                            <x-transaction-row 
+                                :date="$transaction->created_at->format('d M Y')" 
+                                :time="$transaction->created_at->format('h:i A')" 
+                                :transactionId="$transaction->reference ?? 'TXN' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT)"
+                                :icon="getTransactionIcon($transaction->transaction_type_id)"
+                                :iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
+                                :primaryText="$transaction->description ?? 'Transaction'" 
+                                :secondaryText="$transaction->metadata ?? ''"
+                                :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
+                                :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
+                                :amount="'-' .formatAmount($transaction->amount)"
+                                :amountClass= 'debit'; {{--"$transaction->type === 'credit' ? 'credit' : 'debit'"  --}}
+                                :status="$transaction->status" 
+                                :statusClass="strtolower($transaction->status)" 
+                            />
+                        @empty
+                            <tr>
+                                <td colspan="7" class="text-center">No transactions found.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    {{-- this is where the transactions cards starts --}}
+                    {{-- <tbody>
                         <x-transaction-row date="27 Apr 2023" time="10:30 AM" transactionId="TXN123456789"
                             icon="fa-mobile-alt" iconClass="airtime" primaryText="Airtime Recharge"
                             secondaryText="MTN - 08012345678" category="Airtime" categoryClass="airtime" amount="-₦1,000.00"
@@ -150,21 +174,25 @@
                             secondaryText="Airtel - 09087654321" category="Airtime" categoryClass="airtime"
                             amount="-₦2,000.00" amountClass="debit" status="Failed" statusClass="failed" />
 
-                    </tbody>
+                    </tbody> --}}
+                    {{-- this is were the transaction cards ends --}}
                 </table>
             </div>
 
             <div class="pagination-container">
                 <div class="pagination-info">
-                    Showing <span class="highlight">1-7</span> of <span class="highlight">24</span> transactions
+                    <div class="pagination-info">
+                        Showing 
+                        <span class="highlight">{{ $transactions->firstItem() }}</span> 
+                        to 
+                        <span class="highlight">{{ $transactions->lastItem() }}</span> 
+                        of 
+                        <span class="highlight">{{ $transactions->total() }}</span> 
+                        transactions
+                    </div>
                 </div>
                 <div class="pagination-controls">
-                    <button class="pagination-btn" disabled><i class="fas fa-chevron-left"></i></button>
-                    <button class="pagination-btn active">1</button>
-                    <button class="pagination-btn">2</button>
-                    <button class="pagination-btn">3</button>
-                    <button class="pagination-btn">4</button>
-                    <button class="pagination-btn"><i class="fas fa-chevron-right"></i></button>
+                    {{ $transactions->onEachSide(1)->links('pagination::bootstrap-4') }}
                 </div>
             </div>
         </section>
