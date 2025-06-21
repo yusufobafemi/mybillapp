@@ -116,21 +116,20 @@
                     </thead>
                     <tbody>
                         @forelse($transactions as $transaction)
-                        <p>{{$transaction->created_at->format('d M Y')}}</p>
-                            {{-- <x-transaction-row 
-                                :date="$transaction->created_at->format('d M Y')" 
-                                :time="$transaction->created_at->format('h:i A')" 
-                                :transactionId="strtoupper($transaction->reference)"
-                                :icon="getTransactionIcon($transaction->transaction_type_id)"
-                                :iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :primaryText="$transaction->description ?? 'Transaction'" 
-                                :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :amount="'-' .formatAmount($transaction->amount)"
-                                :amountClass= "'debit'" 
-                                :status="$transaction->status" 
-                                :statusClass="strtolower($transaction->status)" 
-                            /> --}}
+                            <x-transaction-row 
+                                date="$transaction->created_at->format('d M Y')" 
+                                time="$transaction->created_at->format('h:i A')" 
+                                transactionId="strtoupper($transaction->reference)"
+                                icon="getTransactionIcon($transaction->transaction_type_id)"
+                                iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
+                                primaryText="$transaction->description ?? 'Transaction'" 
+                                category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
+                                categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
+                                amount="'-' .formatAmount($transaction->amount)"
+                                amountClass= "'debit'" 
+                                status="$transaction->status" 
+                                statusClass="strtolower($transaction->status)" 
+                            />
                         @empty
                             <tr>
                                 <td colspan="7" class="text-center">No transactions found.</td>
