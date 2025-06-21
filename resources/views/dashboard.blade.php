@@ -116,20 +116,20 @@
                     </thead>
                     <tbody>
                         @forelse($transactions as $transaction)
-                            <x-transaction-row 
-                                :date="$transaction->created_at->format('d M Y')" 
-                                :time="$transaction->created_at->format('h:i A')" 
-                                :transactionId="strtoupper($transaction->reference)"
-                                :icon="getTransactionIcon($transaction->transaction_type_id)"
-                                :iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :primaryText="$transaction->description ?? 'Transaction'" 
-                                :secondaryText="$transaction->description ?? 'Transaction'" 
-                                :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :amount="'-' .formatAmount($transaction->amount)"
-                                :amountClass= "debit" 
-                                :status="$transaction->status" 
-                                :statusClass="strtolower($transaction->status)" 
+                            <x-transaction-row
+                                :date="$transaction->created_at?->format('d M Y')" {{-- Nullsafe operator (PHP 8+) --}}
+                                :time="$transaction->created_at?->format('h:i A')" {{-- Nullsafe operator (PHP 8+) --}}
+                                :transactionId="strtoupper($transaction->reference ?? '')"
+                                :icon="getTransactionIcon($transaction->transaction_type_id ?? null)" {{-- Helper should handle null --}}
+                                :iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id ?? null) ?? '')"
+                                :primaryText="$transaction->description ?? 'Transaction'" {{-- This one was already good --}}
+                                :secondaryText="$transaction->some_other_field_for_secondary_text ?? ''" {{-- Add this if you have a field for it, otherwise component default is used --}}
+                                :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id ?? null) ?? '')"
+                                :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id ?? null) ?? '')"
+                                :amount="($transaction->amount !== null ? '-' . formatAmount($transaction->amount) : null)" {{-- Let component default handle if amount is null --}}
+                                amountClass="debit" {{-- If this is static for these items --}}
+                                :status="$transaction->status" {{-- Component default will kick in if $transaction->status is null --}}
+                                :statusClass="strtolower($transaction->status ?? '')"
                             />
                         @empty
                             <tr>

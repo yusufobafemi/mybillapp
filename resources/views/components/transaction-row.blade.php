@@ -1,3 +1,21 @@
+{{-- At the top of resources/views/components/transaction-row.blade.php --}}
+@props([
+    'date' => 'N/A',
+    'time' => 'N/A',
+    'transactionId' => 'N/A',
+    'icon' => 'fa-question-circle', // A default Font Awesome icon
+    'iconClass' => '',
+    'primaryText' => 'Transaction',
+    'secondaryText' => '', // Often optional, so empty string is a good default
+    'category' => 'Uncategorized',
+    'categoryClass' => '',
+    'amount' => '0.00',
+    'amountClass' => '',
+    'status' => 'Unknown',
+    'statusClass' => '',
+])
+
+{{-- Your existing component HTML structure remains the same --}}
 <tr class="transaction-row">
     <td>
         <div class="cell-content">
@@ -39,7 +57,7 @@
     <td>
         <div class="cell-content">
             <button class="btn icon-btn small-btn"><i class="fas fa-receipt"></i></button>
-            @if($status !== 'Failed')
+            @if($status !== 'Failed' && $status !== 'Unknown') {{-- Adjusted condition --}}
                 <button class="btn icon-btn small-btn"><i class="fas fa-redo"></i></button>
             @endif
         </div>
