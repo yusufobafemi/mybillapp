@@ -129,7 +129,7 @@
                                 :amount="($transaction->amount !== null ? '-' . formatAmount($transaction->amount) : null)" {{-- Let component default handle if amount is null --}}
                                 amountClass="debit" {{-- If this is static for these items --}}
                                 :status="$transaction->status" {{-- Component default will kick in if $transaction->status is null --}}
-                                :statusClass="strtolower($transaction->status ?? '')"
+                                :statusClass="strtolower($transaction->status == 'successful' ? 'success' : ($transaction->status ?? ''))"
                             />
                         @empty
                             <tr>
