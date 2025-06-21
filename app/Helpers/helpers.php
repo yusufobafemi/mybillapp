@@ -1,6 +1,6 @@
 <?php
 function formatAmount($amount) {
-    $sign = $amount < 0 ? '-' : '+';
+    $sign = '-';
     return $sign . '₦' . number_format(abs($amount), 2);
 }
 
