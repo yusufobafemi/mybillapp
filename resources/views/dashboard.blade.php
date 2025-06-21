@@ -116,6 +116,15 @@
                     </thead>
                     <tbody>
                         <div>Debug: {{ count($transactions ?? []) }} transactions found</div>
+                        {{-- Test your helper functions --}}
+                        @if($transactions->count() > 0)
+                            @php $firstTransaction = $transactions->first(); @endphp
+                            <div>
+                                Icon: {{ getTransactionIcon($firstTransaction->transaction_type_id) }}<br>
+                                Type: {{ getTransactionTypeName($firstTransaction->transaction_type_id) }}<br>
+                                Amount: {{ formatAmount($firstTransaction->amount) }}
+                            </div>
+                        @endif
                         @forelse($transactions as $transaction)
                             <x-transaction-row 
                                 :date="$transaction->created_at->format('d M Y')" 
