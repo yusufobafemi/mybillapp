@@ -181,7 +181,7 @@
 
             <div class="pagination-container">
                 <div class="pagination-info">
-                    <div class="pagination-info">
+                    {{-- <div class="pagination-info">
                         Showing 
                         <span class="highlight">{{ $transactions->firstItem() }}</span> 
                         to 
@@ -189,10 +189,10 @@
                         of 
                         <span class="highlight">{{ $transactions->total() }}</span> 
                         transactions
-                    </div>
+                    </div> --}}
                 </div>
                 <div class="pagination-controls">
-                    {{ $transactions->onEachSide(1)->links('pagination::bootstrap-4') }}
+                    {{-- {{ $transactions->onEachSide(1)->links('pagination::bootstrap-4') }} --}}
                 </div>
             </div>
         </section>
