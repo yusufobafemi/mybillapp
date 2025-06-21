@@ -119,15 +119,15 @@
                             <x-transaction-row 
                                 :date="$transaction->created_at->format('d M Y')" 
                                 :time="$transaction->created_at->format('h:i A')" 
-                                :transactionId="$transaction->reference ?? ('TXN' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT))"
+                                :transactionId="$transaction->reference ?? 'TXN' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT)"
                                 :icon="getTransactionIcon($transaction->transaction_type_id)"
                                 :iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :primaryText="$transaction->description ?? 'Transaction'" 
                                 :secondaryText="$transaction->metadata ?? ''"
                                 :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
-                                :amount="'-₦' . formatAmount($transaction->amount)"
-                                :amountClass="'debit'"
+                                :amount="'-' .formatAmount($transaction->amount)"
+                                :amountClass= "debit" {{--"$transaction->type === 'credit' ? 'credit' : 'debit'"  --}}
                                 :status="$transaction->status" 
                                 :statusClass="strtolower($transaction->status)" 
                             />
