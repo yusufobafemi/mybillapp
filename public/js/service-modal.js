@@ -899,6 +899,7 @@ $(document).ready(function () {
                                             amount: formData.amount,
                                         },
                                         success: function (verifyResponse) {
+                                            console.log('response on successful download:',verifyResponse);
                                             Swal.close(); // Close any previous loading Swal if it's still open
 
                                             // ✅ Show success message
