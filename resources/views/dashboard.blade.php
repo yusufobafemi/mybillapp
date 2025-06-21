@@ -115,16 +115,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <div>Debug: {{ count($transactions ?? []) }} transactions found</div>
-                        {{-- Test your helper functions --}}
-                        @if($transactions->count() > 0)
-                            @php $firstTransaction = $transactions->first(); @endphp
-                            <div>
-                                Icon: {{ getTransactionIcon($firstTransaction->transaction_type_id) }}<br>
-                                Type: {{ getTransactionTypeName($firstTransaction->transaction_type_id) }}<br>
-                                Amount: {{ formatAmount($firstTransaction->amount) }}
-                            </div>
-                        @endif
                         @forelse($transactions as $transaction)
                             <x-transaction-row 
                                 :date="$transaction->created_at->format('d M Y')" 
@@ -133,10 +123,11 @@
                                 :icon="getTransactionIcon($transaction->transaction_type_id)"
                                 :iconClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :primaryText="$transaction->description ?? 'Transaction'" 
+                                :secondaryText="$transaction->description ?? 'Transaction'" 
                                 :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :amount="'-' .formatAmount($transaction->amount)"
-                                :amountClass= "'debit'" 
+                                :amountClass= "debit" 
                                 :status="$transaction->status" 
                                 :statusClass="strtolower($transaction->status)" 
                             />
