@@ -127,7 +127,7 @@
                                 :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :amount="'-' .formatAmount($transaction->amount)"
-                                :amountClass= "debit" {{--"$transaction->type === 'credit' ? 'credit' : 'debit'"  --}}
+                                :amountClass= "'debit'" {{--"$transaction->type === 'credit' ? 'credit' : 'debit'"  --}}
                                 :status="$transaction->status" 
                                 :statusClass="strtolower($transaction->status)" 
                             />
