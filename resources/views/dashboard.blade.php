@@ -116,7 +116,8 @@
                     </thead>
                     <tbody>
                         @forelse($transactions as $transaction)
-                            <x-transaction-row 
+                            <p>{{ strtolower(getTransactionTypeName($transaction->transaction_type_id)) }}</p>
+                            {{-- <x-transaction-row 
                                 :date="$transaction->created_at->format('d M Y')" 
                                 :time="$transaction->created_at->format('h:i A')" 
                                 :transactionId="$transaction->reference ?? 'TXN' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT)"
@@ -127,10 +128,10 @@
                                 :category="strtoupper(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :categoryClass="strtolower(getTransactionTypeName($transaction->transaction_type_id))" 
                                 :amount="'-' .formatAmount($transaction->amount)"
-                                :amountClass= "'debit'" {{--"$transaction->type === 'credit' ? 'credit' : 'debit'"  --}}
+                                :amountClass= "'debit'"
                                 :status="$transaction->status" 
                                 :statusClass="strtolower($transaction->status)" 
-                            />
+                            /> --}}
                         @empty
                             <tr>
                                 <td colspan="7" class="text-center">No transactions found.</td>
@@ -181,7 +182,7 @@
 
             <div class="pagination-container">
                 <div class="pagination-info">
-                    {{-- <div class="pagination-info">
+                    <div class="pagination-info">
                         Showing 
                         <span class="highlight">{{ $transactions->firstItem() }}</span> 
                         to 
@@ -189,10 +190,10 @@
                         of 
                         <span class="highlight">{{ $transactions->total() }}</span> 
                         transactions
-                    </div> --}}
+                    </div>
                 </div>
                 <div class="pagination-controls">
-                    {{-- {{ $transactions->onEachSide(1)->links('pagination::bootstrap-4') }} --}}
+                    {{ $transactions->onEachSide(1)->links('pagination::bootstrap-4') }}
                 </div>
             </div>
         </section>

@@ -34,7 +34,7 @@ class HomeController extends Controller
         // Get all transactions for the logged-in user
         $transactions = Transaction::where('user_id', $user->id)
         ->latest()
-        ->get();
+        ->paginate(10);
 
         // Pass them to the view
         return view('dashboard', compact('user', 'transactions'));
