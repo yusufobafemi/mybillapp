@@ -115,6 +115,8 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {{-- Debug Output --}}
+                        {{ dd($transactions) }}
                         @forelse($transactions as $transaction)
                             <x-transaction-row 
                                 :date="$transaction->created_at->format('d M Y')" 
