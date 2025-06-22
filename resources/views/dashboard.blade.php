@@ -234,7 +234,6 @@
         <section class="activity-timeline-section">
             <div class="section-header">
                 <h2>Recent Activities</h2>
-                <a href="#" class="view-all">View All</a>
             </div>
             <div class="timeline-container">
                 <div class="timeline-item">
@@ -282,7 +281,7 @@
 
         <!-- Notifications Section -->
         <section class="notifications-section">
-            <div class="notification-item promo">
+            {{-- <div class="notification-item promo">
                 <div class="notification-icon">
                     <i class="fas fa-gift"></i>
                 </div>
@@ -291,7 +290,7 @@
                     <p>Get 10% cashback on all data purchases this weekend.</p>
                 </div>
                 <button class="btn outline-btn small-btn">View</button>
-            </div>
+            </div> --}}
             {{-- <div class="notification-item alert">
                 <div class="notification-icon">
                     <i class="fas fa-bell"></i>
