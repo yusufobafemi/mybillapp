@@ -259,43 +259,22 @@
                         <i class="fas fa-phone-alt"></i>
                         <div>
                             <h3>Phone</h3>
-                            <p>{{ env('CONTACT_PHONE') }}</p>
+                            <p>{{ config('info.CONTACT_PHONE.CONTACT_PHONE') }}</p>
                         </div>
                     </div>
                     <div class="contact-item">
                         <i class="fas fa-envelope"></i>
                         <div>
                             <h3>Email</h3>
-                            <p>support@{{ config('app.name') }}.com</p>
+                            <p>support@{{ Str::slug(config('app.name')) }}.com</p>
                         </div>
                     </div>
-                    <div class="social-links">
+                    {{-- <div class="social-links">
                         <a href="{{ env('FACEBOOK_URL') }}"><i class="fab fa-facebook-f"></i></a>
                         <a href="{{ env('TWITTER_URL') }}"><i class="fab fa-twitter"></i></a>
                         <a href="{{ env('INSTAGRAM_URL') }}"><i class="fab fa-instagram"></i></a>
                         <a href="{{ env('LINKED_URL') }}"><i class="fab fa-linkedin-in"></i></a>
-                    </div>
-                </div>
-                <div class="contact-form slide-up" data-delay="200">
-                    <form>
-                        <div class="form-group">
-                            <label for="name">Full Name</label>
-                            <input type="text" id="name" placeholder="Your name">
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" placeholder="Your email">
-                        </div>
-                        <div class="form-group">
-                            <label for="subject">Subject</label>
-                            <input type="text" id="subject" placeholder="Subject">
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea id="message" placeholder="Your message"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
+                    </div> --}}
                 </div>
             </div>
         </div>
