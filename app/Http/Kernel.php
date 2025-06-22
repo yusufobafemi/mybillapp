@@ -24,6 +24,14 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\Cors::class,
     ];
 
+    protected $routeMiddleware = [
+        'auth' => \App\Http\Middleware\Authenticate::class,
+        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+        // Add your custom CORS middleware here
+        'cors' => \App\Http\Middleware\Cors::class,
+    ];
+
+
     /**
      * The application's route middleware groups.
      *
