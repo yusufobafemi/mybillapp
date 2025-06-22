@@ -35,9 +35,9 @@ class ServiceController extends Controller
         $request->validate([
             'tx_ref' => 'required|string',
             'transaction_id' => 'required|string',
-            'required|string|in:airtime,data,cable,electricity',
-            'phoneNumber' => 'required|numeric',
-            'network' => 'required|string',
+            'service' => 'required|string|in:airtime,data', // UPDATED HERE
+            'phoneNumber' => 'required_if:service,airtime,data|numeric', // Make conditional if not always needed
+            'network' => 'required_if:service,airtime,data|string',     // Make conditional if not always needed
             'amount' => 'required|numeric|min:0.01',
             'biller_code' => 'required_if:service,data|string', // Required for data
             'item_code' => 'required_if:service,data|string',   // Required for data
