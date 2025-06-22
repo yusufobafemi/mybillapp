@@ -1,4 +1,7 @@
 @extends('layouts.app')
+@section('title', 'Dashboard | ' . config('app.name') . 'Buy Airtime & Pay Bills Easily')
+@section('meta_description', 'Top up your mobile, buy data, pay electricity bills in seconds. Secure and fast platform.')
+@section('meta_keywords', 'buy airtime, pay bills, flutterwave, pay electricity, cable TV')
 @section('styles')
     <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/wallet-modal.css') }}">
@@ -353,7 +356,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://checkout.flutterwave.com/v3.js"></script>
-    <script src="{{ asset('js/user-dashboard.js') }}"></script>
-    <script src="{{ asset('js/wallet-modal.js') }}"></script>
-    <script src="{{ asset('js/user-dashboard-component/make-payment-card.js') }}"></script>
+    <script src="{{ mix('js/user-dashboard.js') }}" defer></script>
+    <script src="{{ mix('js/wallet-modal.js') }}" defer></script>
+    <script src="{{ mix('js/user-dashboard-component/make-payment-card.js') }}" defer></script>
 @endsection

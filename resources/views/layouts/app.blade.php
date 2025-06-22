@@ -1,10 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name') }} - Online Payment Platform</title>
+    <title>@yield('title', config('app.name') . ' - Online Payment Platform')</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    <meta name="description" content="@yield('meta_description', 'Buy airtime, pay bills, and access services securely on our payment platform.')">
+    <meta name="keywords" content="@yield('meta_keywords', 'airtime, data, utility bills, VTU, Nigeria, payment platform, buy airtime, subscribe')">
+    {{-- this is for social image --}}
+    <meta property="og:title" content="@yield('og_title', config('app.name'))" />
+    <meta property="og:description" content="@yield('og_description', 'Pay bills, buy airtime, and access digital services with ease.')" />
+    <meta property="og:image" content="@yield('og_image', asset('images/og-default.png'))" />
+    <meta property="og:url" content="{{ url()->current() }}" />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('twitter_title', config('app.name'))">
+    <meta name="twitter:description" content="@yield('twitter_description', 'Your go-to platform for airtime and bill payments.')">
+    <meta name="twitter:image" content="@yield('twitter_image', asset('images/twitter-default.png'))">
+    {{-- social media image close --}}
+    <link rel="canonical" href="{{ url()->current() }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,8 +38,21 @@
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
     @yield('styles')
     @stack('styles')
+    <script type="application/ld+json">
+        {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "name": "Airtime Recharge",
+        "provider": {
+            "@type": "Organization",
+            "name": "{{ config('app.name') }}"
+        },
+        "areaServed": "NG",
+        "serviceType": "Mobile Recharge"
+        }
+    </script>
 </head>
-<body>
+<body class="scroll-smooth">
     @include('partials.navbar')
 
     @yield('content')
@@ -38,8 +68,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="{{ asset('js/script.js') }}"></script>
-    <script src="{{ asset('js/toast.js') }}"></script>
+    <script src="{{ mix('js/script.js') }}" defer></script>
+    <script src="{{ mix('js/toast.js') }}" defer></script>
     @yield('scripts')
     @stack('scripts')
 </body>

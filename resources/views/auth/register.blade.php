@@ -88,8 +88,8 @@
 @section('scripts')
 <script>
     const routes = {
-        register: "{{ route('register') }}",
+        register: "{{ route('register.submit') }}",
     };
 </script>
-<script src="{{ asset('js/register-script.js') }}"></script>
+<script src="{{ mix('js/register-script.js') }}" defer></script>
 @endsection

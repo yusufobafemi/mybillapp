@@ -13,7 +13,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\TestController;
-
+use Spatie\Sitemap\Sitemap;
+use Spatie\Sitemap\Tags\Url;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,14 @@ use App\Http\Controllers\TestController;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
+
+Route::get('/generate-sitemap', function () {
+    Sitemap::create()
+        ->add(Url::create('/'))
+        ->writeToFile(public_path('sitemap.xml'));
+
+    return 'Sitemap generated!';
+});
 
 Route::get('/', function () {
     return view('welcome');
@@ -78,6 +87,8 @@ Route::get('/login', function () {
 Route::post('/login', [LoginController::class, 'login'])->name('login');
 
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+
+Route::post('/register', [RegisterController::class, 'register'])->name('register.submit');
 
 Route::get('/test', function () {
     return view('test');

@@ -103,5 +103,5 @@
         verify: "{{ route('verification.notice') }}",
     };
     </script>
-    <script src="{{ asset('js/login-script.js') }}"></script>
+    <script src="{{ mix('js/login-script.js') }}" defer></script>
 @endsection
