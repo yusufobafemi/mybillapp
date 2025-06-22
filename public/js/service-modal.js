@@ -1028,7 +1028,7 @@ $(document).ready(function () {
                 // --- AJAX submission for data would go here, similar to Airtime ---
                 Swal.fire({
                     title: "Confirm Data Purchase",
-                    html: `Purchase ${selectedPlanText} for ${formData.phoneNumber} at ₦${formData.amount}`,
+                    html: `Purchase ${selectedPlanText} for ${formData.phoneNumber}`,
                     icon: "question",
                     showCancelButton: true,
                     confirmButtonText: "Yes, continue",

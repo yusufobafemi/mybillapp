@@ -347,13 +347,13 @@ class ServiceController extends Controller
             // Get Flutterwave Secret Key and Callback URL from environment
             $secretKey = env('FLW_SECRET_KEY');
             // Provide a fallback URL for the callback if env is not set
-            $callbackUrl = env('FLW_CALLBACK_URL', url('/api/flutterwave/callback')); // Define a default callback URL
+            $callbackUrl =  url('/api/flutterwave/callback'); // Define a default callback URL
 
             if (empty($secretKey)) {
                 // This is a critical configuration error
-                Log::error('Flutterwave Secret Key not set in environment. Cannot proceed with API call.', ['tx_ref' => $txRef, 'user_id' => $user->id]);
+                Log::error('Flutterwave Secret Key not set in environment. Cannot proceed with API call.', ['tx_ref' => $reference, 'user_id' => $user->id]);
                 // Reversing debit as API call cannot be made
-                $user->increment('balance', $amount);
+                // $user->increment('balance', $amount);
                 Log::info('User balance refunded due to missing FLW_SECRET_KEY', ['user_id' => $user->id, 'amount_refunded' => $amount, 'tx_ref' => $reference, 'new_balance' => $user->fresh()->balance]);
 
                 // Store failed transaction
