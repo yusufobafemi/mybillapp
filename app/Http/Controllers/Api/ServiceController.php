@@ -35,7 +35,7 @@ class ServiceController extends Controller
         $request->validate([
             'tx_ref' => 'required|string',
             'transaction_id' => 'required|string',
-            'service' => 'required|string|in:airtime',
+            'required|string|in:airtime,data,cable,electricity',
             'phoneNumber' => 'required|numeric',
             'network' => 'required|string',
             'amount' => 'required|numeric|min:0.01',
@@ -324,6 +324,7 @@ class ServiceController extends Controller
 
         // 2. Validate Request
         $validatedData = $request->validate([
+            'reference' => 'required|string',
             'biller_code' => 'required|string', // e.g., BIL110 (MTN NG)
             'item_code' => 'required|string',   // e.g., MD136 (1GB daily)
             'phoneNumber' => 'required|string', // Customer phone number (e.g., 08012345678)
