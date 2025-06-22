@@ -1232,3 +1232,8 @@ footer {
         font-size: 1rem;
     }
 }
+
+.btn.btn-outline,
+.btn.btn-outline:hover {
+    text-decoration: none;
+}
