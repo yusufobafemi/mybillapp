@@ -538,6 +538,8 @@ class ServiceController extends Controller
                 Log::error('Data Purchase Failed (HTTP Error from Flutterwave):', [
                     'tx_ref' => $reference,
                     'user_id' => $user->id,
+                    'billerCode' => $billerCode,
+                    'itemcode' => $itemCode,
                     'response_status_code' => $httpErrorCode,
                     'response_body' => $rawBody,
                     'exception' => $exceptionMessage, // Capture the HTTP exception message
