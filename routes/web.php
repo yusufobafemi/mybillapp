@@ -27,13 +27,14 @@ use Spatie\Sitemap\Tags\Url;
 |
 */
 
-Route::get('/generate-sitemap', function () {
-    Sitemap::create()
-        ->add(Url::create('/'))
-        ->writeToFile(public_path('sitemap.xml'));
+Route::get('/sitemap.xml', function () {
+    $sitemap = Sitemap::create()
+        ->add(Url::create('/'));
 
-    return 'Sitemap generated!';
+    return response($sitemap->render())
+        ->header('Content-Type', 'application/xml');
 });
+
 
 Route::get('/', function () {
     return view('welcome');
