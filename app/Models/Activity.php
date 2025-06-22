@@ -7,5 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Activity extends Model
 {
-    use HasFactory;
+    protected $fillable = [
+        'user_id',
+        'type',
+        'title',
+        'description',
+        'occurred_at',
+    ];
+
 }
