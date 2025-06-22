@@ -51,7 +51,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave's transaction verification API
-            $response = Http::withToken($secretKey)
+            $response = Http::withToken($liveSecretKey)
                 ->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
 
             $result = $response->json();
@@ -211,6 +211,15 @@ class ServiceController extends Controller
                     'reference' => $reference,
                     'description' => ucwords($network) . ' - ' . $phoneNumber,
                 ]);
+
+                \App\Models\Activity::create([
+                    'user_id' => $user->id,
+                    'type' => 'Airtime Top Up',
+                    'title' => 'Airtime Top Up Successful',
+                    'description' => 'You successfully top up airtime',
+                    'occurred_at' => now(),
+                ]);
+
 
                 // Return a successful response to the user
                 return response()->json([
