@@ -99,7 +99,7 @@
                         <p>Sign up in seconds with just your email and phone number. No lengthy forms.</p>
                     </div>
                     <div class="step-image">
-                        <img src="{{ asset('images/register.jpg') }}" alt="Create Account">
+                        <img src="{{ asset('images/register.jpg') }}" alt="Create Account" style="max-width: 400px; width: 100%; display: block; margin: 0 auto;" />
                     </div>
                 </div>
                 <div class="step slide-up" data-delay="200">
@@ -109,7 +109,7 @@
                         <p>Choose from our wide range of services including airtime, data, bills, and more.</p>
                     </div>
                     <div class="step-image">
-                        <img src="{{ asset('images/select-service.jpg') }}" alt="Select Service">
+                        <img src="{{ asset('images/select-service.jpg') }}" alt="Select Service" style="max-width: 400px; width: 100%; display: block; margin: 0 auto;" >
                     </div>
                 </div>
                 <div class="step slide-up" data-delay="400">
@@ -119,7 +119,7 @@
                         <p>Complete your transaction securely using any payment method of your choice.</p>
                     </div>
                     <div class="step-image">
-                        <img src="{{ asset('images/make-payment.jpg') }}" alt="Make Payment">
+                        <img src="{{ asset('images/make-payment.jpg') }}" alt="Make Payment" style="max-width: 400px; width: 100%; display: block; margin: 0 auto;" >
                     </div>
                 </div>
             </div>
