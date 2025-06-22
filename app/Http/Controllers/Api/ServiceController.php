@@ -4,6 +4,8 @@
 // it uses the ref like this 11750384351
 // if a payment is made with a merchant it uses TXN_11750384351
 
+// THIS IS THE TEST TO MAKE THINGS WORK AND I WANT IT TO SHOW IF THE FILES UPDATE
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -55,7 +57,7 @@ class ServiceController extends Controller
 
         try {
             // Call Flutterwave's transaction verification API
-            $response = Http::withToken($liveSecretKey)
+            $response = Http::withToken($secretKey)
                 ->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
 
             $result = $response->json();
