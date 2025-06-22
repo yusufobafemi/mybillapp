@@ -7,7 +7,7 @@ $.ajaxSetup({
 
 function generateTransactionCode() {
     const randomNumber = Math.floor(100000000 + Math.random() * 900000000); // ensures 9-digit number
-    return `TXN${randomNumber}`;
+    return `${randomNumber}`;
 }
 
 $(document).ready(function () {
@@ -1008,6 +1008,7 @@ $(document).ready(function () {
                 );
                 const planShortName = match ? match[1] : selectedPlanText;
                 formData.shortplan = planShortName;
+                formData.planname = selectedDataName;
                 // ADDED: Validate parsed amount and check balance
                 if (formData.amount <= 0) {
                     $.elegantToastr.error(
@@ -1016,18 +1017,18 @@ $(document).ready(function () {
                     );
                     return;
                 }
-                if (formData.amount > userBalanceData) {
-                    $.elegantToastr.error(
-                        "Insufficient Balance",
-                        "Your balance is insufficient for this data plan."
-                    );
-                    return;
-                }
+                // if (formData.amount > userBalanceData) {
+                //     $.elegantToastr.error(
+                //         "Insufficient Balance",
+                //         "Your balance is insufficient for this data plan."
+                //     );
+                //     return;
+                // }
 
                 // --- AJAX submission for data would go here, similar to Airtime ---
                 Swal.fire({
                     title: "Confirm Data Purchase",
-                    html: `Purchase ${selectedPlanText} for ${formData.phoneNumber}`,
+                    html: `Purchase ${selectedPlanText} for ${formData.phoneNumber} at ₦${formData.amount}`,
                     icon: "question",
                     showCancelButton: true,
                     confirmButtonText: "Yes, continue",
@@ -1036,74 +1037,103 @@ $(document).ready(function () {
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: "Processing...",
-                            text: "Please wait while we subscribe your line.",
+                            text: "Loading payment page",
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
                             },
                         });
-                        formData.service = "data"; // Add service type for backend
-                        formData.planname = selectedDataName; // Add service type for backend
+                        formData.service = "data";
+                        formData.tx_ref = tx_ref;
+                        const flutterwaveModal = FlutterwaveCheckout({
+                            //FLWPUBK-6ecd4d6df722528e0cf41c5fad8552bb-X
+                            public_key: "FLWPUBK-6ecd4d6df722528e0cf41c5fad8552bb-X", // Your public key
+                            tx_ref: formData.tx_ref, // Use the tx_ref from backend
+                            amount: formData.amount, // Use the amount from backend response (or validated amount)
+                            currency: "NGN",
+                            payment_options: "card,banktransfer,ussd",
+                            customer: {
+                                "name": customerName,
+                                "email": customerEmail,
+                            }, // Use customer details from backend response
+                            customizations: {
+                                title: 'MyBilllApp',
+                                description: 'Buy airtime and merchant payments',
+                                logo: 'https://www.logolynx.com/images/logolynx/22/2239ca38f5505fbfce7e55bbc0604386.jpeg',
+                            }, // Keep your customizations
+                            // redirect_url: window.location.origin + "/verify-payment", // Keep the redirect URL
+                            // --- Step 3: Handle Flutterwave Callbacks (Client-Side) ---
+                            // Note: The main verification happens on the backend via redirect_url.
+                            // This callback is mostly for client-side UI updates or logging.
+                            callback: function (response) {
+                                console.log("Flutterwave client-side callback:", response);
+                                if (response.status === "completed" && response.charge_response_message === "Approved Successful") {
+                                    Swal.fire({
+                                        title: "Verifying Payment...",
+                                        text: "Please wait while we confirm your payment.",
+                                        allowOutsideClick: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
 
-                        $.ajax({
-                            url: "/process-service", // Replace with your actual endpoint
-                            method: "POST",
-                            data: formData,
-                            success: function (response) {
-                                /* ... success handling ... */
-                                if (response && response.status === "success") {
-                                    Swal.fire({
-                                        title: "Success!",
-                                        text: response.message || "...",
-                                        icon: "success",
+                                    // Verify payment server-side to prevent redirection
+                                    $.ajax({
+                                        url: "/verify-payment-inline", // New endpoint
+                                        method: "POST",
+                                        data: {
+                                            tx_ref: response.tx_ref,
+                                            transaction_id: response.transaction_id,
+                                            service: "data",
+                                            phoneNumber: formData.phoneNumber,
+                                            network: formData.network,
+                                            amount: formData.amount,
+                                            biller_code: formData.biller_code,
+                                            item_code: formData.item_code,
+                                            shortplan: formData.shortplan,
+                                            planname: formData.planname,
+                                        },
+                                        success: function (verifyResponse) {
+                                            console.log('response on successful download:',verifyResponse);
+                                            Swal.close(); // Close any previous loading Swal if it's still open
+                                            flutterwaveModal.close();
+                                            // Show success message
+                                            Swal.fire({
+                                                title: "Data Purchase was Successful!",
+                                                html: `${selectedPlanText} Purchase for <b>${formData.phoneNumber}</b> at ₦${formData.amount} was successful.`,
+                                                icon: "success",
+                                                confirmButtonText: "OK",
+                                            });
+
+                                            // Optionally close the custom modal if open
+                                            closeServiceModal();
+                                        },
+                                        error: function (xhr) {
+                                            Swal.close();
+                                            let errorMessage = "Error verifying payment. Please contact support.";
+                                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                                errorMessage = xhr.responseJSON.message;
+                                            }
+                                            Swal.fire({
+                                                title: "Error!",
+                                                text: errorMessage,
+                                                icon: "error",
+                                            });
+                                            $("#proceedServiceModalBtn").prop("disabled", false);
+                                        },
                                     });
-                                    if (
-                                        response.new_balance !== undefined &&
-                                        $("#userBalance").length
-                                    ) {
-                                        $("#userBalance").text(
-                                            `₦${Number(
-                                                response.new_balance
-                                            ).toLocaleString()}`
-                                        );
-                                    }
-                                    closeServiceModal();
                                 } else {
-                                    Swal.fire({
-                                        title: "Failed!",
-                                        text: response.message || "...",
-                                        icon: "error",
-                                    });
+                                    Swal.close();
+                                    $.elegantToastr.error("Payment Failed", "Your payment was not successful. Please try again.");
+                                    $("#proceedServiceModalBtn").prop("disabled", false);
                                 }
                             },
-                            error: function (xhr, status, error) {
-                                /* ... error handling ... */
-                                console.error(
-                                    "AJAX Error:",
-                                    status,
-                                    error,
-                                    xhr.responseText
-                                );
-                                let errorMessage =
-                                    "Something went wrong. Please try again.";
-                                if (
-                                    xhr.responseJSON &&
-                                    xhr.responseJSON.message
-                                ) {
-                                    errorMessage = xhr.responseJSON.message;
-                                } else if (xhr.responseText) {
-                                    errorMessage =
-                                        "Error: " +
-                                        xhr.responseText.substring(0, 100) +
-                                        "...";
-                                }
-                                Swal.fire({
-                                    title: "Error!",
-                                    text: errorMessage,
-                                    icon: "error",
-                                });
+                            onclose: function () {
+                                console.log('Flutterwave modal closed');
+                                flutterwaveModal.close();
+                                Swal.close();
                             },
-                        });
+                        }); 
                     }
                 });
 
