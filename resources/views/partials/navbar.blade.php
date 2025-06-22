@@ -1,7 +1,9 @@
 <header>
     <nav class="container">
         <div class="logo">
-            <h1>My<span>BillApp</span></h1>
+            <a href="{{ url('/') }}">
+                <img src="{{ asset('images/logo.png') }}" alt="BillApp Logo" style="height: 40px;">
+            </a>
         </div>
         <div class="menu-toggle">
             <i class="fas fa-bars"></i>
