@@ -195,12 +195,36 @@
                     {{ $transactions->onEachSide(1)->links('pagination::bootstrap-4') }}
                 </div> --}}
                 <div class="pagination-controls">
-                    <button class="pagination-btn" disabled><i class="fas fa-chevron-left"></i></button>
-                    <button class="pagination-btn active">1</button>
-                    <button class="pagination-btn">2</button>
-                    <button class="pagination-btn">3</button>
-                    <button class="pagination-btn">4</button>
-                    <button class="pagination-btn"><i class="fas fa-chevron-right"></i></button>
+                    {{-- Previous Page Button --}}
+                    @if ($transactions->onFirstPage())
+                        <button class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                    @else
+                        <a href="{{ $transactions->previousPageUrl() }}" class="pagination-btn">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    @endif
+
+                    {{-- Page Number Buttons --}}
+                    @for ($page = 1; $page <= $transactions->lastPage(); $page++)
+                        @if ($page == $transactions->currentPage())
+                            <button class="pagination-btn active">{{ $page }}</button>
+                        @else
+                            <a href="{{ $transactions->url($page) }}" class="pagination-btn">{{ $page }}</a>
+                        @endif
+                    @endfor
+
+                    {{-- Next Page Button --}}
+                    @if ($transactions->hasMorePages())
+                        <a href="{{ $transactions->nextPageUrl() }}" class="pagination-btn">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    @else
+                        <button class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    @endif
                 </div>
             </div>
         </section>
