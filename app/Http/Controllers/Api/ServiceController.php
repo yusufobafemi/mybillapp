@@ -39,6 +39,10 @@ class ServiceController extends Controller
             'phoneNumber' => 'required|numeric',
             'network' => 'required|string',
             'amount' => 'required|numeric|min:0.01',
+            'biller_code' => 'required_if:service,data|string', // Required for data
+            'item_code' => 'required_if:service,data|string',   // Required for data
+            'shortplan' => 'required_if:service,data|string',   // Required for data
+            'planname' => 'required_if:service,data|string',
         ]);
 
         $txRef = $request->tx_ref;
@@ -139,6 +143,7 @@ class ServiceController extends Controller
     public function processService(Request $request)
     {
         $serviceType = $request->input('service');
+        Log::info('processService called', context: ['service' => $serviceType, 'request' => $request->all()]);
         $type = $request->input('type');
 
         // For cable service, check if type is getCableItemcode
@@ -304,6 +309,7 @@ class ServiceController extends Controller
 
     private function processData(Request $request)
     {
+        Log::info('processData started', ['request' => $request->all()]);
         // 1. Authenticate User
         $user = auth('web')->user(); // Using auth('web')->user() as in the first snippet
         $liveSecretKey = config('services.flutterwave.live_secret_key');
@@ -344,6 +350,14 @@ class ServiceController extends Controller
 
 
         try {
+            $validatedData = $request->validate([
+                'biller_code' => 'required|string',
+                'item_code' => 'required|string',
+                'phoneNumber' => 'required|string',
+                'amount' => 'required|numeric|min:0.01',
+                'shortplan' => 'required|string',
+                'planname' => 'required|string',
+            ]);
             // 5. Prepare and Make Flutterwave API Call (using the working endpoint)
 
             // Get Flutterwave Secret Key and Callback URL from environment
@@ -612,6 +626,7 @@ class ServiceController extends Controller
                 ]);
             }
 
+            Log::info('Generated reference', ['reference' => $reference]);
 
             return response()->json([
                 'status' => 'failed',
