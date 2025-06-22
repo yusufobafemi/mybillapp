@@ -259,14 +259,15 @@
                         <i class="fas fa-phone-alt"></i>
                         <div>
                             <h3>Phone</h3>
-                            <p>{{ config('info.CONTACT_PHONE.CONTACT_PHONE') }}</p>
+                            {{-- config('services.flutterwave.live_secret_key') --}}
+                            <p>{{ config('services.info.CONTACT_PHONE') }}</p>
                         </div>
                     </div>
                     <div class="contact-item">
                         <i class="fas fa-envelope"></i>
                         <div>
                             <h3>Email</h3>
-                            <p>support@{{ Str::slug(config('app.name')) }}.com</p>
+                            <p>support@mybillapp.com</p>
                         </div>
                     </div>
                     {{-- <div class="social-links">
