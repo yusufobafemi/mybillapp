@@ -77,7 +77,7 @@ Route::get('/login', function () {
 
 Route::post('/login', [LoginController::class, 'login'])->name('login');
 
-Route::post('/register', [RegisterController::class, 'register'])->middleware('cors')->name('register');
+Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
 
 Route::get('/test', function () {
     return view('test');
