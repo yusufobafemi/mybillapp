@@ -12,7 +12,7 @@
                     <li><a href="#services">Services</a></li>
                     <li><a href="#how-it-works">How It Works</a></li>
                     <li><a href="#testimonials">Testimonials</a></li>
-                    <li><a href="#faq">FAQ</a></li>
+                    {{-- <li><a href="#faq">FAQ</a></li> --}}
                 </ul>
             </div>
             <div class="footer-services">
@@ -35,7 +35,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>© 2023 {{ config('app.name') }}. All rights reserved.</p>
+            <p>© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
             <div class="footer-bottom-links">
                 <a href="#">Privacy Policy</a>
                 <a href="#">Terms of Service</a>

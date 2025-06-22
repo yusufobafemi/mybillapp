@@ -7,7 +7,7 @@
                 <h1>Pay Bills & Recharge <span>Instantly</span></h1>
                 <p>The fastest and most secure way to pay bills, buy airtime, and make online payments from anywhere, anytime.</p>
                 <div class="hero-buttons">
-                    <a href="#" class="btn btn-primary">Get Started <i class="fas fa-arrow-right"></i></a>
+                    <a href="{{ route('register') }}" class="btn btn-primary">Get Started <i class="fas fa-arrow-right"></i></a>
                     <a href="#how-it-works" class="btn btn-secondary">How It Works</a>
                 </div>
                 {{-- <div class="trusted-by">
@@ -99,7 +99,7 @@
                         <p>Sign up in seconds with just your email and phone number. No lengthy forms.</p>
                     </div>
                     <div class="step-image">
-                        <img src="/placeholder.svg?height=200&width=200" alt="Create Account">
+                        <img src="{{ asset('images/register.jpg') }}" alt="Create Account">
                     </div>
                 </div>
                 <div class="step slide-up" data-delay="200">
@@ -109,7 +109,7 @@
                         <p>Choose from our wide range of services including airtime, data, bills, and more.</p>
                     </div>
                     <div class="step-image">
-                        <img src="/placeholder.svg?height=200&width=200" alt="Select Service">
+                        <img src="{{ asset('images/select-service.jpg') }}" alt="Select Service">
                     </div>
                 </div>
                 <div class="step slide-up" data-delay="400">
@@ -119,7 +119,7 @@
                         <p>Complete your transaction securely using any payment method of your choice.</p>
                     </div>
                     <div class="step-image">
-                        <img src="/placeholder.svg?height=200&width=200" alt="Make Payment">
+                        <img src="{{ asset('images/make-payment.jpg') }}" alt="Make Payment">
                     </div>
                 </div>
             </div>
@@ -130,11 +130,11 @@
         <div class="container">
             <div class="stats-grid">
                 <div class="stat-card fade-in">
-                    <h3><span class="counter" data-target="500000">0</span>+</h3>
+                    <h3><span class="counter" data-target="120">0</span>+</h3>
                     <p>Happy Customers</p>
                 </div>
                 <div class="stat-card fade-in" data-delay="200">
-                    <h3><span class="counter" data-target="10000000">0</span>+</h3>
+                    <h3><span class="counter" data-target="350">0</span>+</h3>
                     <p>Transactions</p>
                 </div>
                 <div class="stat-card fade-in" data-delay="400">
@@ -244,7 +244,7 @@
             <div class="cta-content fade-in">
                 <h2>Ready to Experience Hassle-Free Payments?</h2>
                 <p>Join over 500,000 satisfied customers who trust {{ config('app.name') }} for their daily payment needs.</p>
-                <a href="#" class="btn btn-primary">Get Started Now <i class="fas fa-arrow-right"></i></a>
+                <a href="{{ route('register') }}" class="btn btn-primary">Get Started Now <i class="fas fa-arrow-right"></i></a>
             </div>
         </div>
     </section>
