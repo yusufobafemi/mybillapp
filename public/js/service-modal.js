@@ -1047,7 +1047,7 @@ $(document).ready(function () {
                         formData.tx_ref = tx_ref;
                         const flutterwaveModal = FlutterwaveCheckout({
                             //FLWPUBK-6ecd4d6df722528e0cf41c5fad8552bb-X
-                            public_key: "FLWPUBK_TEST-3aff844cef3e5730b10d19d591adc641-X", // Your public key
+                            public_key: "FLWPUBK-6ecd4d6df722528e0cf41c5fad8552bb-X", // Your public key
                             tx_ref: formData.tx_ref, // Use the tx_ref from backend
                             amount: formData.amount, // Use the amount from backend response (or validated amount)
                             currency: "NGN",
