@@ -91,5 +91,5 @@
         register: "{{ route('register.submit') }}",
     };
 </script>
-<script src="{{ mix('js/register-script.js') }}" defer></script>
+<script src="{{ asset('js/register-script.js') }}" defer></script>
 @endsection

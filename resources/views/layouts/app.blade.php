@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name') . ' - Online Payment Platform')</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/apple-touch-icon.png') }}">
     <meta name="description" content="@yield('meta_description', 'Buy airtime, pay bills, and access services securely on our payment platform.')">
     <meta name="keywords" content="@yield('meta_keywords', 'airtime, data, utility bills, VTU, Nigeria, payment platform, buy airtime, subscribe')">
     {{-- this is for social image --}}
@@ -68,8 +68,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="{{ mix('js/script.js') }}" defer></script>
-    <script src="{{ mix('js/toast.js') }}" defer></script>
+    <script src="{{ asset('js/script.js') }}" defer></script>
+    <script src="{{ asset('js/toast.js') }}" defer></script>
     @yield('scripts')
     @stack('scripts')
 </body>

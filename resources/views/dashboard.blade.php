@@ -356,7 +356,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://checkout.flutterwave.com/v3.js"></script>
-    <script src="{{ mix('js/user-dashboard.js') }}" defer></script>
-    <script src="{{ mix('js/wallet-modal.js') }}" defer></script>
-    <script src="{{ mix('js/user-dashboard-component/make-payment-card.js') }}" defer></script>
+    <script src="{{ asset('js/user-dashboard.js') }}" defer></script>
+    <script src="{{ asset('js/wallet-modal.js') }}" defer></script>
+    <script src="{{ asset('js/user-dashboard-component/make-payment-card.js') }}" defer></script>
 @endsection
