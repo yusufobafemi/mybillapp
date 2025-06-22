@@ -7,16 +7,22 @@
             <i class="fas fa-bars"></i>
         </div>
         <ul class="nav-menu">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#services">Services</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#testimonials">Testimonials</a></li>
-            <li><a href="#contact" class="btn btn-outline">Contact Us</a></li>
+            @if (Route::currentRouteName() == 'home')
+                <li><a href="#home">Home</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#testimonials">Testimonials</a></li>
+            @else
+                <li><a href="{{ route('home') }}">Home</a></li>
+            @endif
+
             @auth
                 <li>
+                    <li><a href="{{ route('dashboard') }}" class="btn btn-outline">Dashboard</a></li>
                     <a href="{{ route('logout') }}" class="btn btn-danger">Logout</a>
                 </li>
             @endauth
+
             @guest
                 <li>
                     @if (Route::currentRouteName() == 'login')

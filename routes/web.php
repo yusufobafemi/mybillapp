@@ -109,6 +109,10 @@ Route::post('/webhook', function (Request $request) {
     return response()->json(['status' => 'Deployment triggered', 'output' => $output]);
 });
 
+Route::get('/', function () {
+    return view('welcome'); // Or the correct Blade file
+})->name('home');
+
 Route::post('/process-service', [ServiceController::class, 'processService'])->middleware('auth');
 
 Route::post('/get-data-info', [ServiceController::class, 'getDataPlans'])->middleware('auth');
