@@ -1,2 +1,9 @@
 User-agent: *
-Disallow:
+Disallow: /
+Allow: /$
+Allow: /css/  # Allows crawling of your CSS directory
+Allow: /js/   # Allows crawling of your JavaScript directory
+Allow: /images/ # Allows crawling of your images directory
+# Add other specific asset paths if needed
+
+Sitemap: https://mybillapp.com/sitemap.xml

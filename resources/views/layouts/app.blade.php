@@ -20,6 +20,7 @@
     <meta name="twitter:title" content="@yield('twitter_title', config('app.name'))">
     <meta name="twitter:description" content="@yield('twitter_description', 'Your go-to platform for airtime and bill payments.')">
     <meta name="twitter:image" content="@yield('twitter_image', asset('images/twitter-default.png'))">
+    <meta name="google-site-verification" content="XaMryBLZrVMyCvIotXqA_bCYDGfXNF7E_3v72dibIGM" />
     {{-- social media image close --}}
     <link rel="canonical" href="{{ url()->current() }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
