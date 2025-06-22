@@ -324,7 +324,7 @@ class ServiceController extends Controller
 
         // 2. Validate Request
         $validatedData = $request->validate([
-            'reference' => 'required|string',
+            'tx_ref' => 'required|string',
             'biller_code' => 'required|string', // e.g., BIL110 (MTN NG)
             'item_code' => 'required|string',   // e.g., MD136 (1GB daily)
             'phoneNumber' => 'required|string', // Customer phone number (e.g., 08012345678)
@@ -340,7 +340,7 @@ class ServiceController extends Controller
         $amount = (float) $validatedData['amount']; // Cast to float to ensure numeric comparison
         $shortplan = $validatedData['shortplan'];
         $planname = $validatedData['planname'];
-        $reference = $txRef.$request->input('reference');
+        $reference = 'TXN_'.$validatedData['tx_ref'];//this is where i will save the item in such a way that
 
         // 4. Debit User Balance *Before* Calling External API
         // This is a critical step to prevent double-spending.
@@ -351,14 +351,6 @@ class ServiceController extends Controller
 
 
         try {
-            $validatedData = $request->validate([
-                'biller_code' => 'required|string',
-                'item_code' => 'required|string',
-                'phoneNumber' => 'required|string',
-                'amount' => 'required|numeric|min:0.01',
-                'shortplan' => 'required|string',
-                'planname' => 'required|string',
-            ]);
             // 5. Prepare and Make Flutterwave API Call (using the working endpoint)
 
             // Get Flutterwave Secret Key and Callback URL from environment
