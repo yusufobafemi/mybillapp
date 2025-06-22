@@ -18,7 +18,7 @@
 
             @auth
                 <li>
-                    <li><a href="{{ route('dashboard') }}" class="btn btn-outline">Dashboard</a></li>
+                    <li><a href="{{ route('dashboard') }}" class="btn btn-outline" style="text-decoration: none;">Dashboard</a></li>
                     <a href="{{ route('logout') }}" class="btn btn-danger">Logout</a>
                 </li>
             @endauth
