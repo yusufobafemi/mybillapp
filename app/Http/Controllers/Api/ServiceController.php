@@ -379,6 +379,7 @@ class ServiceController extends Controller
             // This endpoint requires biller_code and item_code in the URL path
             $flutterwaveUrl = "https://api.flutterwave.com/v3/billers/{$billerCode}/items/{$itemCode}/payment";
 
+
             // Prepare the payload for the API request (using the working snippet's structure)
             $payload = [
                 "country"     => "NG", // Assuming Nigerian data bundles
