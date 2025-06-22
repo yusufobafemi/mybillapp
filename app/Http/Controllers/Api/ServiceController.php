@@ -214,9 +214,9 @@ class ServiceController extends Controller
 
                 \App\Models\Activity::create([
                     'user_id' => $user->id,
-                    'type' => 'Airtime Top Up',
-                    'title' => 'Airtime Top Up Successful',
-                    'description' => 'You successfully top up airtime',
+                    'type' => 'transaction',
+                    'title' => 'Transaction Completed',
+                    'description' => 'Airtime recharge of ₦'.$amount.' to '.number_format($amount, 2),
                     'occurred_at' => now(),
                 ]);
 

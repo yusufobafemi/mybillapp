@@ -260,6 +260,58 @@
                     <p>No recent activity</p>
                 @endforelse
             </div>
+
+            how can i implement this 
+
+        <!-- Activity Timeline -->
+        {{-- <section class="activity-timeline-section">
+            <div class="section-header">
+                <h2>Recent Activities</h2>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-item">
+                    <div class="timeline-icon login">
+                        <i class="fas fa-sign-in-alt"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h4>Account Login</h4>
+                        <p>You logged in from a new device</p>
+                        <span class="timeline-time">Today, 8:15 AM</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon transaction">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h4>Transaction Completed</h4>
+                        <p>Airtime recharge of ₦1,000 to 08012345678</p>
+                        <span class="timeline-time">Today, 10:30 AM</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon profile">
+                        <i class="fas fa-user-edit"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h4>Profile Updated, wow ir works</h4>
+                        <p>You updated your contact information</p>
+                        <span class="timeline-time">Yesterday, 11:45 AM</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon transaction">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h4>Transaction Completed</h4>
+                        <p>DSTV subscription payment of ₦24,500</p>
+                        <span class="timeline-time">Yesterday, 2:15 PM</span>
+                    </div>
+                </div>
+            </div>
+        </section> --}}
+        
         </section>
 
         <!-- Notifications Section -->

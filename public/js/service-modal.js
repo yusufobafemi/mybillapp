@@ -866,8 +866,8 @@ $(document).ready(function () {
                                 "email": customerEmail,
                             }, // Use customer details from backend response
                             customizations: {
-                                title: 'The Titanic Store',
-                                description: 'Payment for an awesome cruise',
+                                title: 'MyBilllApp',
+                                description: 'Buy airtime and merchant payments',
                                 logo: 'https://www.logolynx.com/images/logolynx/22/2239ca38f5505fbfce7e55bbc0604386.jpeg',
                             }, // Keep your customizations
                             // redirect_url: window.location.origin + "/verify-payment", // Keep the redirect URL
@@ -901,7 +901,7 @@ $(document).ready(function () {
                                         success: function (verifyResponse) {
                                             console.log('response on successful download:',verifyResponse);
                                             Swal.close(); // Close any previous loading Swal if it's still open
-
+                                            flutterwaveModal.close();
                                             // ✅ Show success message
                                             Swal.fire({
                                                 title: "Airtime Purchase Successful!",
