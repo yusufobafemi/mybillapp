@@ -1,4 +1,8 @@
 <?php
+//this is how paymwnt works
+//if a payment is made and successful
+// it uses the ref like this 11750384351
+// if a payment is made with a merchant it uses TXN_11750384351
 
 namespace App\Http\Controllers\Api;
 
@@ -263,6 +267,7 @@ class ServiceController extends Controller
 
     public function getDataPlans(Request $request)
     {
+        $liveSecretKey = config('services.flutterwave.live_secret_key');
         $request->validate([
             'billercode' => 'required|string',
         ]);
@@ -270,7 +275,7 @@ class ServiceController extends Controller
         $billerCode = $request->input('billercode');
 
         try {
-            $response = Http::withToken(env('FLW_SECRET_KEY')) // set your Flutterwave secret key in .env
+            $response = Http::withToken($liveSecretKey) // set your Flutterwave secret key in .env
                 ->get("https://api.flutterwave.com/v3/billers/{$billerCode}/items");
 
             if ($response->successful()) {
