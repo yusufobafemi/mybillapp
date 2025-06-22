@@ -111,7 +111,7 @@
                                 Amount <i class="fas fa-sort-down"></i>
                             </th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            {{-- <th>Actions</th> --}}
                         </tr>
                     </thead>
                     <tbody>
@@ -261,8 +261,6 @@
                 @endforelse
             </div>
 
-            how can i implement this 
-
         <!-- Activity Timeline -->
         {{-- <section class="activity-timeline-section">
             <div class="section-header">
@@ -311,7 +309,7 @@
                 </div>
             </div>
         </section> --}}
-        
+
         </section>
 
         <!-- Notifications Section -->

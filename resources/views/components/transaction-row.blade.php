@@ -56,7 +56,7 @@
     </td>
     <td>
         <div class="cell-content">
-            <button class="btn icon-btn small-btn"><i class="fas fa-receipt"></i></button>
+            {{-- <button class="btn icon-btn small-btn"><i class="fas fa-receipt"></i></button> --}}
             {{-- @if($status !== 'Failed' && $status !== 'Unknown')
                 <button class="btn icon-btn small-btn"><i class="fas fa-redo"></i></button>
             @endif --}}
